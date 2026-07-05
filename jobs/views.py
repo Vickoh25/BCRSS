@@ -1,7 +1,7 @@
 from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
 from django_filters.rest_framework import DjangoFilterBackend
 from .models import JobOpportunity
 from .serializers import JobOpportunitySerializer, JobOpportunityCreateSerializer
@@ -10,6 +10,12 @@ class JobOpportunityViewSet(viewsets.ModelViewSet):
     queryset = JobOpportunity.objects.all()
     serializer_class = JobOpportunitySerializer
     permission_classes = [IsAuthenticated]
+    
+    def get_permissions(self):
+        """Allow unauthenticated list and retrieve access"""
+        if self.action in ['list', 'retrieve']:
+            return [AllowAny()]
+        return super().get_permissions()
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['category', 'status']
     search_fields = ['title', 'description', 'location']

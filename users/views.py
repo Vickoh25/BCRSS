@@ -1,7 +1,7 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
 from .models import User
 from .serializers import UserSerializer, UserDetailSerializer
 
@@ -9,6 +9,12 @@ class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated]
+    
+    def get_permissions(self):
+        """Allow unauthenticated list access"""
+        if self.action == 'list':
+            return [AllowAny()]
+        return super().get_permissions()
     
     def get_serializer_class(self):
         if self.action == 'retrieve':
