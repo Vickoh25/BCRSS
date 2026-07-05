@@ -2,11 +2,34 @@
 
 If you're experiencing issues installing dependencies on Windows, follow these steps:
 
-## Issue: Pillow Installation Error on Python 3.14
+## Common Issues & Solutions
+
+### Issue 1: Pillow Installation Error on Python 3.14
 
 **Error**: `KeyError: '__version__'` when installing Pillow 10.1.0
 
 **Solution**: Use a newer version of Pillow that supports Python 3.14
+
+### Issue 2: mysqlclient Installation Error
+
+**Error**: `error: Microsoft Visual C++ 14.0 or greater is required`
+
+**Solution**: Install using pre-built wheels:
+```powershell
+pip install mysqlclient --only-binary :all:
+```
+
+Alternatively, download pre-built wheels from: https://www.lfd.uci.edu/~gohlke/pythonlibs/#mysqlclient
+
+### Issue 3: Django Database Connection Error
+
+**Error**: `mysqlclient 2.2.1 or newer is required`
+
+**Solution**: Ensure you have mysqlclient (not PyMySQL) installed:
+```powershell
+pip uninstall PyMySQL
+pip install mysqlclient --only-binary :all:
+```
 
 ## Installation Steps for Windows
 
@@ -42,9 +65,10 @@ If you still encounter issues with Pillow, try:
 pip install --upgrade Pillow
 ```
 
-Or install without Pillow first, then add it:
+Or install packages individually:
 ```powershell
-pip install Django djangorestframework django-cors-headers python-dotenv PyMySQL cloudinary django-filter
+pip install Django djangorestframework django-cors-headers python-dotenv cloudinary django-filter
+pip install mysqlclient --only-binary :all:
 pip install Pillow --upgrade
 ```
 

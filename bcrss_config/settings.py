@@ -95,9 +95,7 @@ DATABASES = {
     }
 }
 
-# PyMySQL configuration
-import pymysql
-pymysql.install_as_MySQLdb()
+# Using mysqlclient for MySQL database connection
 
 
 # Password validation
