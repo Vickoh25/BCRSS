@@ -1,6 +1,19 @@
-import { User, ResourceItem, JobOpportunity, BorrowRequest, Review } from './types';
+/**
+ * BCRSS - Mock Data & Type Definitions
+ * 
+ * Data Models:
+ * - User: { id, name, email, role, location, contact, avatarColor }
+ * - ResourceItem: { id, title, category, condition, description, lendingType, location, ownerId, ownerName, ownerContact, status, listedDate, imageCode }
+ * - JobOpportunity: { id, title, category, status, description, location, rate, duration, postedBy, postedById, postedDate, contactInfo }
+ * - BorrowRequest: { id, itemId, itemTitle, requesterId, requesterName, requesterContact, ownerId, startDate, endDate, status, requestDate, message }
+ * - Review: { id, rating, comment, reviewerName, reviewerRole, date, targetName }
+ */
 
-export const INITIAL_USERS: User[] = [
+const BCRSS = {};
+
+// ==================== MOCK DATA ====================
+
+BCRSS.INITIAL_USERS = [
   {
     id: 'user-vick',
     name: 'Vick Okelloh',
@@ -66,7 +79,7 @@ export const INITIAL_USERS: User[] = [
   }
 ];
 
-export const INITIAL_RESOURCES: ResourceItem[] = [
+BCRSS.INITIAL_RESOURCES = [
   {
     id: 'res-sprayer',
     title: 'Knapsack Sprayer (16L)',
@@ -159,7 +172,7 @@ export const INITIAL_RESOURCES: ResourceItem[] = [
   }
 ];
 
-export const INITIAL_JOBS: JobOpportunity[] = [
+BCRSS.INITIAL_JOBS = [
   {
     id: 'job-carpenter',
     title: 'Carpenter for Furniture Repair',
@@ -218,7 +231,7 @@ export const INITIAL_JOBS: JobOpportunity[] = [
   }
 ];
 
-export const INITIAL_REQUESTS: BorrowRequest[] = [
+BCRSS.INITIAL_REQUESTS = [
   {
     id: 'req-1',
     itemId: 'res-wheelbarrow',
@@ -235,7 +248,7 @@ export const INITIAL_REQUESTS: BorrowRequest[] = [
   }
 ];
 
-export const INITIAL_REVIEWS: Review[] = [
+BCRSS.INITIAL_REVIEWS = [
   {
     id: 'rev-1',
     rating: 5,

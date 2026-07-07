@@ -1,6 +1,0 @@
-{
-  "name": "Baraton Community Resource Sharing System",
-  "description": "A web platform for neighborhood households, local farmers, traders, and chama groups in Baraton (Nandi County, Kenya) to list, discover, and exchange resources such as farm tools, textbooks, and casual job opportunities.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}
