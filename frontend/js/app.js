@@ -36,32 +36,57 @@ const APP = {
   },
 
   // ==================== INITIALISATION ====================
-  init() {
+  async init() {
     this.loadFromStorage();
-    this.setupDefaultData();
+    await this.loadInitialData();
     this.render();
     this.bindGlobalEvents();
   },
 
-  setupDefaultData() {
+  async loadInitialData() {
     const s = this.state;
-    if (s.users.length === 0) {
-      s.users = JSON.parse(JSON.stringify(BCRSS.INITIAL_USERS));
-    }
-    if (s.resources.length === 0) {
-      s.resources = JSON.parse(JSON.stringify(BCRSS.INITIAL_RESOURCES));
-    }
-    if (s.jobs.length === 0) {
-      s.jobs = JSON.parse(JSON.stringify(BCRSS.INITIAL_JOBS));
-    }
-    if (s.requests.length === 0) {
-      s.requests = JSON.parse(JSON.stringify(BCRSS.INITIAL_REQUESTS));
-    }
-    if (s.reviews.length === 0) {
-      s.reviews = JSON.parse(JSON.stringify(BCRSS.INITIAL_REVIEWS));
-    }
-    if (!s.currentUser) {
-      s.currentUser = s.users[0];
+    try {
+      // Check if we have a token and try to get current user
+      if (apiClient.token && !s.currentUser) {
+        try {
+          s.currentUser = await apiClient.getMe();
+        } catch (e) {
+          console.warn('Failed to fetch current user profile');
+        }
+      }
+
+      // Fetch all public data in parallel for speed
+      const [resources, jobs] = await Promise.all([
+        apiClient.listResources(),
+        apiClient.listJobs()
+      ]);
+      s.resources = resources;
+      s.jobs = jobs;
+
+      // If logged in, fetch personal data
+      if (s.currentUser) {
+        const [myReqs, recReqs] = await Promise.all([
+          apiClient.getMyBorrowRequests(),
+          apiClient.getReceivedBorrowRequests()
+        ]);
+        s.requests = [...myReqs, ...recReqs];
+        
+        // Also fetch all users if admin
+        if (s.currentUser.role === 'Admin') {
+          s.users = await apiClient.listUsers();
+        }
+      }
+
+      // Fallback to mock data if API is empty/failed (only for development)
+      if (s.resources.length === 0) s.resources = BCRSS.INITIAL_RESOURCES;
+      if (s.jobs.length === 0) s.jobs = BCRSS.INITIAL_JOBS;
+      
+    } catch (e) {
+      console.error('Data loading failed:', e);
+      // Fallback to mock data on error
+      s.resources = BCRSS.INITIAL_RESOURCES;
+      s.jobs = BCRSS.INITIAL_JOBS;
+      s.users = BCRSS.INITIAL_USERS;
     }
   },
 
@@ -156,6 +181,10 @@ const APP = {
       container.innerHTML = renderBorrowModal(s);
     } else if (s.activeModal === 'apply' && s.applyJobTarget) {
       container.innerHTML = renderApplyModal(s);
+    } else if (s.activeModal === 'login') {
+      container.innerHTML = renderLoginModal(s);
+    } else if (s.activeModal === 'register') {
+      container.innerHTML = renderRegisterModal(s);
     } else {
       container.innerHTML = '';
     }
@@ -207,10 +236,63 @@ const APP = {
   },
 
   // ==================== USER MANAGEMENT ====================
-  switchUser(userId) {
-    const user = this.state.users.find(u => u.id === userId);
-    if (user) {
-      this.state.currentUser = user;
+  async handleLogin(e) {
+    e.preventDefault();
+    const username = document.getElementById('login-username').value;
+    const password = document.getElementById('login-password').value;
+    try {
+      const res = await apiClient.login(username, password);
+      this.state.currentUser = apiClient.mapUser(res.user);
+      this.state.activeModal = null;
+      alert(`Welcome back, ${this.state.currentUser.name}!`);
+      this.init(); // Re-init to load data
+    } catch (err) {
+      alert('Login failed. Please check your credentials.');
+    }
+  },
+
+  async handleRegister(e) {
+    e.preventDefault();
+    const data = {
+      username: document.getElementById('reg-username').value,
+      email: document.getElementById('reg-email').value,
+      first_name: document.getElementById('reg-first-name').value,
+      last_name: document.getElementById('reg-last-name').value,
+      location: document.getElementById('reg-location').value,
+      contact: document.getElementById('reg-contact').value,
+      password: document.getElementById('reg-password').value,
+      password_confirm: document.getElementById('reg-password-confirm').value,
+    };
+
+    if (data.password !== data.password_confirm) {
+      alert('Passwords do not match!');
+      return;
+    }
+
+    try {
+      const res = await apiClient.register(data);
+      this.state.currentUser = apiClient.mapUser(res.user);
+      this.state.activeModal = null;
+      alert(`Account created! Welcome, ${this.state.currentUser.name}.`);
+      this.init();
+    } catch (err) {
+      alert('Registration failed. Username or email might be taken.');
+    }
+  },
+
+  async handleLogout() {
+    try {
+      await apiClient.logout();
+      this.state.currentUser = null;
+      this.state.currentTab = 'home';
+      alert('Logged out successfully.');
+      this.render();
+    } catch (err) {
+      console.error('Logout failed:', err);
+      // Force clear if API fails
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('refresh_token');
+      this.state.currentUser = null;
       this.render();
     }
   },
@@ -258,134 +340,105 @@ const APP = {
   },
 
   // ==================== SHARE RESOURCE HANDLER ====================
-  handleShareResource(e) {
+  async handleShareResource(e) {
     e.preventDefault();
-    const title = document.getElementById('share-title').value.trim();
-    const category = document.getElementById('share-category').value;
-    const condition = document.getElementById('share-condition').value;
-    const description = document.getElementById('share-description').value.trim();
-    const lendingType = document.getElementById('share-lending-type').value;
-    const location = document.getElementById('share-location').value.trim();
-    const ownerName = document.getElementById('share-owner-name').value.trim();
-    const ownerContact = document.getElementById('share-owner-contact').value.trim();
+    if (!this.state.currentUser) return APP.openModal('login');
 
-    if (!title || !description || !location || !ownerName || !ownerContact) {
-      alert('Please fill in all required fields.');
-      return;
-    }
+    const data = {
+      id: `res-${Date.now()}`,
+      title: document.getElementById('share-title').value.trim(),
+      category: document.getElementById('share-category').value,
+      condition: document.getElementById('share-condition').value,
+      description: document.getElementById('share-description').value.trim(),
+      lending_type: document.getElementById('share-lending-type').value,
+      location: document.getElementById('share-location').value.trim(),
+      status: 'Available'
+    };
 
     // Determine image code based on title keywords
     let imageCode = 'generic';
-    const lowerTitle = title.toLowerCase();
+    const lowerTitle = data.title.toLowerCase();
     if (lowerTitle.includes('spray')) imageCode = 'sprayer';
     else if (lowerTitle.includes('lantern') || lowerTitle.includes('solar')) imageCode = 'lantern';
     else if (lowerTitle.includes('biol')) imageCode = 'biology';
     else if (lowerTitle.includes('plough') || lowerTitle.includes('jembe')) imageCode = 'plough';
     else if (lowerTitle.includes('comput') || lowerTitle.includes('insy')) imageCode = 'computing';
     else if (lowerTitle.includes('wheel')) imageCode = 'wheelbarrow';
+    data.image_code = imageCode;
 
-    const newItem = {
-      id: `res-${Date.now()}`,
-      title,
-      category,
-      condition,
-      description,
-      lendingType,
-      location,
-      ownerId: this.state.currentUser.id,
-      ownerName,
-      ownerContact,
-      status: 'Available',
-      listedDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
-      imageCode
-    };
-
-    this.state.resources = [newItem, ...this.state.resources];
-    this.state.activeModal = null;
-    alert(`Fantastic! "${title}" has been successfully shared on the listing page!`);
-    this.render();
+    try {
+      await apiClient.createResource(data);
+      this.state.activeModal = null;
+      alert(`Fantastic! "${data.title}" has been successfully shared on the listing page!`);
+      this.init();
+    } catch (err) {
+      alert('Failed to share resource. Please try again.');
+    }
   },
 
   // ==================== POST JOB HANDLER ====================
-  handlePostJob(e) {
+  async handlePostJob(e) {
     e.preventDefault();
-    const title = document.getElementById('job-title').value.trim();
-    const category = document.getElementById('job-category').value;
-    const description = document.getElementById('job-description').value.trim();
-    const location = document.getElementById('job-location').value.trim();
-    const rate = document.getElementById('job-rate').value.trim();
-    const duration = document.getElementById('job-duration').value.trim();
-    const contactInfo = document.getElementById('job-contact').value.trim();
+    if (!this.state.currentUser) return APP.openModal('login');
 
-    if (!title || !description || !location || !rate || !duration || !contactInfo) {
-      alert('Please fill in all required fields.');
-      return;
-    }
-
-    // Collect requirements from the dynamic requirements section
     const requirementInputs = document.querySelectorAll('.requirement-input');
     const requirements = Array.from(requirementInputs)
       .map(input => input.value.trim())
       .filter(val => val !== '');
 
-    const newJob = {
+    const data = {
       id: `job-${Date.now()}`,
-      title,
-      category,
-      status: 'Open',
-      description,
-      location,
-      rate,
-      duration,
-      postedBy: this.state.currentUser.name,
-      postedById: this.state.currentUser.id,
-      postedDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
-      contactInfo,
-      requirements
+      title: document.getElementById('job-title').value.trim(),
+      category: document.getElementById('job-category').value,
+      description: document.getElementById('job-description').value.trim(),
+      location: document.getElementById('job-location').value.trim(),
+      rate: document.getElementById('job-rate').value.trim(),
+      duration: document.getElementById('job-duration').value.trim(),
+      contact_info: document.getElementById('job-contact').value.trim(),
+      requirements: requirements,
+      status: 'Open'
     };
 
-    this.state.jobs = [newJob, ...this.state.jobs];
-    this.state.activeModal = null;
-    const reqSummary = requirements.length > 0 ? `\nRequirements: ${requirements.join(', ')}` : '\n(No special requirements)';
-    alert(`Success! Your job post "${title}" is now visible to helpers on the board.${reqSummary}`);
-    this.render();
+    try {
+      await apiClient.createJob(data);
+      this.state.activeModal = null;
+      const reqSummary = requirements.length > 0 ? `\nRequirements: ${requirements.join(', ')}` : '\n(No special requirements)';
+      alert(`Success! Your job post "${data.title}" is now visible on the board.${reqSummary}`);
+      this.init();
+    } catch (err) {
+      alert('Failed to post job. Please check all fields.');
+    }
   },
 
   // ==================== BORROW REQUEST HANDLER ====================
-  handleBorrowRequest(e) {
+  async handleBorrowRequest(e) {
     e.preventDefault();
+    if (!this.state.currentUser) return APP.openModal('login');
     const item = this.state.borrowItemTarget;
     if (!item) return;
 
-    const startDate = document.getElementById('borrow-start').value;
-    const endDate = document.getElementById('borrow-end').value;
-    const message = document.getElementById('borrow-message').value.trim();
+    const data = {
+      id: `req-${Date.now()}`,
+      item: item.id,
+      start_date: document.getElementById('borrow-start').value,
+      end_date: document.getElementById('borrow-end').value,
+      message: document.getElementById('borrow-message').value.trim()
+    };
 
-    if (new Date(startDate) > new Date(endDate)) {
+    if (new Date(data.start_date) > new Date(data.end_date)) {
       alert('Start Date cannot be after the Return Date.');
       return;
     }
 
-    const newRequest = {
-      id: `req-${Date.now()}`,
-      itemId: item.id,
-      itemTitle: item.title,
-      requesterId: this.state.currentUser.id,
-      requesterName: this.state.currentUser.name,
-      requesterContact: this.state.currentUser.contact,
-      ownerId: item.ownerId,
-      startDate,
-      endDate,
-      status: 'Pending',
-      requestDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
-      message
-    };
-
-    this.state.requests = [newRequest, ...this.state.requests];
-    this.state.activeModal = null;
-    this.state.borrowItemTarget = null;
-    alert(`Borrow request sent to ${item.ownerName}! Track its status in your Dashboard.`);
-    this.render();
+    try {
+      await apiClient.createBorrowRequest(data);
+      this.state.activeModal = null;
+      this.state.borrowItemTarget = null;
+      alert(`Borrow request sent to ${item.ownerName}! Track its status in your Dashboard.`);
+      this.init();
+    } catch (err) {
+      alert('Failed to send borrow request.');
+    }
   },
 
   // ==================== APPLY JOB HANDLER ====================
@@ -407,103 +460,98 @@ const APP = {
   },
 
   // ==================== DASHBOARD ACTIONS ====================
-  approveRequest(requestId) {
-    const s = this.state;
-    s.requests = s.requests.map(r =>
-      r.id === requestId ? { ...r, status: 'Approved' } : r
-    );
-    const req = s.requests.find(r => r.id === requestId);
-    if (req) {
-      s.resources = s.resources.map(item =>
-        item.id === req.itemId ? { ...item, status: 'Borrowed' } : item
-      );
+  async approveRequest(requestId) {
+    try {
+      await apiClient.approveBorrowRequest(requestId);
+      alert(`You successfully Approved this borrow request!`);
+      this.init();
+    } catch (err) {
+      alert('Failed to approve request.');
     }
-    alert(`You successfully Approved this borrow request!`);
-    this.render();
   },
 
-  declineRequest(requestId) {
-    this.state.requests = this.state.requests.map(r =>
-      r.id === requestId ? { ...r, status: 'Declined' } : r
-    );
-    alert('Declined request.');
-    this.render();
+  async declineRequest(requestId) {
+    try {
+      await apiClient.declineBorrowRequest(requestId);
+      alert('Declined request.');
+      this.init();
+    } catch (err) {
+      alert('Failed to decline request.');
+    }
   },
 
-  markReturned(requestId) {
-    const s = this.state;
-    s.requests = s.requests.map(r =>
-      r.id === requestId ? { ...r, status: 'Returned' } : r
-    );
-    const req = s.requests.find(r => r.id === requestId);
-    if (req) {
-      s.resources = s.resources.map(item =>
-        item.id === req.itemId ? { ...item, status: 'Available' } : item
-      );
+  async markReturned(requestId) {
+    try {
+      await apiClient.markBorrowRequestReturned(requestId);
+      alert('Marked as returned!');
+      this.init();
+    } catch (err) {
+      alert('Failed to mark as returned.');
+    }
+  },
 
-      // Prompt for review
-      const ratingComment = prompt('Leave a rating review for the partner borrower? Keep the community trusted!\nRate out of 5 stars:', '5');
-      const commentText = prompt('Write some optional feedback about this rental transaction:', 'Perfect transaction, returned the tool fully cleaned and ready to go!');
-
-      if (ratingComment && commentText) {
-        const rating = Math.min(5, Math.max(1, parseInt(ratingComment) || 5));
-        const newReview = {
-          id: `rev-${Date.now()}`,
-          rating,
-          comment: commentText,
-          reviewerName: s.currentUser.name,
-          reviewerRole: s.currentUser.role,
-          date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
-          targetName: req.requesterName
-        };
-        s.reviews = [newReview, ...s.reviews];
-        alert('Thank you! Your feedback is saved and updates community trust metrics.');
+  async toggleItemStatus(itemId) {
+    const item = this.state.resources.find(r => r.id === itemId);
+    if (!item) return;
+    try {
+      if (item.status === 'Available') {
+        await apiClient.markResourceBorrowed(itemId);
+      } else {
+        await apiClient.markResourceAvailable(itemId);
       }
+      this.init();
+    } catch (err) {
+      alert('Failed to update item status.');
     }
-    this.render();
   },
 
-  toggleItemStatus(itemId) {
-    this.state.resources = this.state.resources.map(r =>
-      r.id === itemId
-        ? { ...r, status: r.status === 'Available' ? 'Borrowed' : 'Available' }
-        : r
-    );
-    this.render();
-  },
-
-  toggleJobStatus(jobId) {
-    this.state.jobs = this.state.jobs.map(j =>
-      j.id === jobId
-        ? { ...j, status: j.status === 'Open' ? 'Filled' : 'Open' }
-        : j
-    );
-    this.render();
+  async toggleJobStatus(jobId) {
+    const job = this.state.jobs.find(j => j.id === jobId);
+    if (!job) return;
+    try {
+      if (job.status === 'Open') {
+        await apiClient.markJobFilled(jobId);
+      } else {
+        await apiClient.markJobOpen(jobId);
+      }
+      this.init();
+    } catch (err) {
+      alert('Failed to update job status.');
+    }
   },
 
   // ==================== ADMIN ACTIONS ====================
-  deleteResource(itemId) {
+  async deleteResource(itemId) {
     const item = this.state.resources.find(r => r.id === itemId);
     if (item && confirm(`Are you sure you want to delete ${item.title}?`)) {
-      this.state.resources = this.state.resources.filter(r => r.id !== itemId);
-      alert('Resource listing permanently moderated / removed.');
-      this.render();
+      try {
+        await apiClient.deleteResource(itemId);
+        alert('Resource listing permanently moderated / removed.');
+        this.init();
+      } catch (err) {
+        alert('Failed to delete resource.');
+      }
     }
   },
 
-  deleteJob(jobId) {
+  async deleteJob(jobId) {
     const job = this.state.jobs.find(j => j.id === jobId);
     if (job && confirm(`Remove job listing: ${job.title}?`)) {
-      this.state.jobs = this.state.jobs.filter(j => j.id !== jobId);
-      alert('Job opportunity moderated / removed.');
-      this.render();
+      try {
+        await apiClient.deleteJob(jobId);
+        alert('Job opportunity moderated / removed.');
+        this.init();
+      } catch (err) {
+        alert('Failed to delete job.');
+      }
     }
   },
 
-  deleteRequest(requestId) {
+  async deleteRequest(requestId) {
     if (confirm('Delete this request record?')) {
+      // Backend typically doesn't allow deleting requests via ModelViewSet unless enabled
+      // For now, let's keep it local or implement if needed
       this.state.requests = this.state.requests.filter(r => r.id !== requestId);
-      alert('Borrow ledger record deleted.');
       this.render();
     }
   },

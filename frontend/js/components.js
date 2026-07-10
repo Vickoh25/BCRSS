@@ -92,10 +92,7 @@ function renderItemImage(imageCode, category, sizeClass) {
 
 // ==================== HEADER ====================
 function renderHeader(state) {
-  const { currentUser, users, currentTab } = state;
-  const initials = currentUser.name.split(' ').map(n => n[0]).join('');
-  const firstLetter = currentUser.name[0];
-
+  const { currentUser, currentTab } = state;
   const navItems = [
     { id: 'home', label: 'Home' },
     { id: 'resources', label: 'Resources' },
@@ -103,6 +100,9 @@ function renderHeader(state) {
     { id: 'dashboard', label: 'Dashboard' },
     { id: 'admin', label: 'Admin' }
   ];
+
+  const initials = currentUser ? currentUser.name.split(' ').map(n => n[0]).join('') : '';
+  const firstLetter = currentUser ? currentUser.name[0] : '';
 
   return `
   <header class="app-header">
@@ -126,38 +126,41 @@ function renderHeader(state) {
 
         <!-- Desktop Actions -->
         <div id="desktop-actions" class="hidden md:flex items-center gap-3">
-          <button class="share-btn" onclick="APP.openModal('share')">
-            ${icon('plus', 'w-4 h-4')}
-            <span>Share Resource</span>
-          </button>
-
-          <!-- Profile -->
-          <div class="relative" id="profile-dropdown-container">
-            <button class="profile-btn" onclick="APP.toggleUserDropdown()">
-              <div class="avatar ${currentUser.avatarColor}">${initials}</div>
-              ${icon('chevronDown', 'w-4 h-4 text-medium')}
+          ${currentUser ? `
+            <button class="share-btn" onclick="APP.openModal('share')">
+              ${icon('plus', 'w-4 h-4')}
+              <span>Share Resource</span>
             </button>
-            <div id="user-dropdown-menu"></div>
-          </div>
+            <div class="relative" id="profile-dropdown-container">
+              <button class="profile-btn" onclick="APP.toggleUserDropdown()">
+                <div class="avatar ${currentUser.avatarColor}">${initials}</div>
+                ${icon('chevronDown', 'w-4 h-4 text-medium')}
+              </button>
+              <div id="user-dropdown-menu"></div>
+            </div>
+          ` : `
+            <button class="btn-secondary text-sm" onclick="APP.openModal('login')">Log In</button>
+            <button class="btn-primary text-sm px-5" onclick="APP.openModal('register')">Get Started</button>
+          `}
         </div>
 
         <!-- Mobile -->
         <div id="mobile-actions" class="flex md:hidden items-center gap-2">
-          <div class="avatar-sm ${currentUser.avatarColor}">${firstLetter}</div>
+          ${currentUser ? `
+            <div class="avatar-sm ${currentUser.avatarColor}">${firstLetter}</div>
+          ` : ''}
           <button class="mobile-menu-btn" onclick="APP.toggleMobileMenu()">
             ${icon('menu', 'w-6 h-6')}
           </button>
         </div>
       </div>
     </div>
-
-    <!-- Mobile Drawer -->
     <div id="mobile-drawer" class="${state.mobileMenuOpen ? '' : 'hidden'}"></div>
   </header>`;
 }
 
 function renderUserDropdown(state) {
-  const { currentUser, availableUsers } = state;
+  const { currentUser } = state;
   if (!state.userDropdownOpen) return '';
 
   return `
@@ -178,23 +181,10 @@ function renderUserDropdown(state) {
       </button>
     </div>
 
-    <div class="p-3 bg-stone-50">
-      <div class="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-2 px-1">Simulate Role Swap</div>
-      <div class="space-y-1 max-h-48 overflow-y-auto">
-        ${availableUsers.map(user => `
-          <button class="w-full text-left px-2 py-1.5 rounded-lg text-xs flex items-center justify-between transition-colors ${currentUser.id === user.id ? 'bg-primary-light text-primary font-medium' : 'hover:bg-[#e2dfd5]/30 text-medium hover:text-dark'}"
-            onclick="APP.switchUser('${user.id}'); APP.toggleUserDropdown();">
-            <span class="truncate">${user.name} (${user.role})</span>
-            <span class="text-[10px] text-stone-400 uppercase">${user.location.split(' ')[0]}</span>
-          </button>
-        `).join('')}
-      </div>
-    </div>
-
     <div class="p-1 bg-stone-100/30">
       <button class="w-full text-left px-3.5 py-2.5 text-xs text-red-600 hover:bg-red-50 rounded-xl flex items-center space-x-2.5"
-        onclick="alert('To simulation-test multiple user scenarios, simply pick other names in the switch list!'); APP.toggleUserDropdown();">
-        ${icon('logOut', 'w-3.5 h-3.5')}<span>Log out Simulation</span>
+        onclick="APP.handleLogout(); APP.toggleUserDropdown();">
+        ${icon('logOut', 'w-3.5 h-3.5')}<span>Log Out</span>
       </button>
     </div>
   </div>`;
@@ -1109,11 +1099,11 @@ function renderShareModal(state) {
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div class="space-y-1 text-left">
               <label class="form-label">Your Name *</label>
-              <input type="text" class="input-field" id="share-owner-name" value="${currentUser.name}" required>
+              <input type="text" class="input-field" id="share-owner-name" value="${currentUser ? currentUser.name : ''}" required>
             </div>
             <div class="space-y-1 text-left">
               <label class="form-label">Contact *</label>
-              <input type="text" class="input-field" id="share-owner-contact" value="${currentUser.contact}" required>
+              <input type="text" class="input-field" id="share-owner-contact" value="${currentUser ? currentUser.contact : ''}" required>
             </div>
           </div>
           <div class="space-y-1 text-left">
@@ -1180,7 +1170,7 @@ function renderPostJobModal(state) {
             </div>
             <div class="space-y-1 text-left">
               <label class="form-label">Contact Info *</label>
-              <input type="text" class="input-field" id="job-contact" value="${currentUser.contact}" required>
+              <input type="text" class="input-field" id="job-contact" value="${currentUser ? currentUser.contact : ''}" required>
             </div>
           </div>
           <div class="space-y-3 text-left mt-2 pt-4 border-t border-stone-200">
@@ -1297,6 +1287,89 @@ function renderApplyModal(state) {
           <div class="modal-footer">
             <button type="button" class="btn-secondary-sm" onclick="APP.closeModal()">Cancel</button>
             <button type="submit" class="btn-primary-sm flex items-center space-x-1">${icon('send', 'w-3.5 h-3.5')}<span>Submit Application</span></button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ==================== AUTH MODALS ====================
+function renderLoginModal(state) {
+  return `
+  <div class="modal-overlay">
+    <div class="modal-backdrop" onclick="APP.closeModal()"></div>
+    <div class="modal-container">
+      <div class="modal-panel modal-panel-sm">
+        <div class="modal-header">
+          <h3 class="font-serif text-2xl font-bold text-stone-900">Welcome Back</h3>
+          <button class="modal-close" onclick="APP.closeModal()">${icon('x', 'w-6 h-6')}</button>
+        </div>
+        <form class="modal-body space-y-4" id="login-form" onsubmit="APP.handleLogin(event)">
+          <div class="space-y-1 text-left">
+            <label class="form-label">Username</label>
+            <input type="text" class="input-field" id="login-username" placeholder="Enter your username" required>
+          </div>
+          <div class="space-y-1 text-left">
+            <label class="form-label">Password</label>
+            <input type="password" class="input-field" id="login-password" placeholder="••••••••" required>
+          </div>
+          <div class="modal-footer pt-2">
+            <button type="button" class="text-sm font-medium text-stone-500 hover:text-stone-800" onclick="APP.openModal('register')">Need an account? Sign up</button>
+            <button type="submit" class="btn-primary">Log In</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderRegisterModal(state) {
+  return `
+  <div class="modal-overlay">
+    <div class="modal-backdrop" onclick="APP.closeModal()"></div>
+    <div class="modal-container">
+      <div class="modal-panel modal-panel-md">
+        <div class="modal-header">
+          <h3 class="font-serif text-2xl font-bold text-stone-900">Create Account</h3>
+          <button class="modal-close" onclick="APP.closeModal()">${icon('x', 'w-6 h-6')}</button>
+        </div>
+        <form class="modal-body grid grid-cols-1 sm:grid-cols-2 gap-4" id="register-form" onsubmit="APP.handleRegister(event)">
+          <div class="space-y-1 text-left">
+            <label class="form-label">Username *</label>
+            <input type="text" class="input-field" id="reg-username" required>
+          </div>
+          <div class="space-y-1 text-left">
+            <label class="form-label">Email *</label>
+            <input type="email" class="input-field" id="reg-email" required>
+          </div>
+          <div class="space-y-1 text-left">
+            <label class="form-label">First Name *</label>
+            <input type="text" class="input-field" id="reg-first-name" required>
+          </div>
+          <div class="space-y-1 text-left">
+            <label class="form-label">Last Name *</label>
+            <input type="text" class="input-field" id="reg-last-name" required>
+          </div>
+          <div class="space-y-1 text-left">
+            <label class="form-label">Location *</label>
+            <input type="text" class="input-field" id="reg-location" placeholder="e.g. Upper Baraton" required>
+          </div>
+          <div class="space-y-1 text-left">
+            <label class="form-label">Contact *</label>
+            <input type="text" class="input-field" id="reg-contact" placeholder="+254..." required>
+          </div>
+          <div class="space-y-1 text-left">
+            <label class="form-label">Password *</label>
+            <input type="password" class="input-field" id="reg-password" required>
+          </div>
+          <div class="space-y-1 text-left">
+            <label class="form-label">Confirm Password *</label>
+            <input type="password" class="input-field" id="reg-password-confirm" required>
+          </div>
+          <div class="sm:col-span-2 modal-footer mt-2">
+            <button type="button" class="text-sm font-medium text-stone-500 hover:text-stone-800" onclick="APP.openModal('login')">Already have an account? Log in</button>
+            <button type="submit" class="btn-primary">Register Account</button>
           </div>
         </form>
       </div>
