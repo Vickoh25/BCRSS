@@ -23,6 +23,7 @@ class JobOpportunity(models.Model):
     rate = models.CharField(max_length=100)
     duration = models.CharField(max_length=100)
     contact_info = models.CharField(max_length=255, blank=True, null=True)
+    requirements = models.JSONField(default=list, blank=True)
     posted_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='job_postings')
     posted_date = models.DateField(auto_now_add=True)
     created_at = models.DateTimeField(auto_now_add=True)

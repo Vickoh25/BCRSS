@@ -4,7 +4,7 @@
  * Data Models:
  * - User: { id, name, email, role, location, contact, avatarColor }
  * - ResourceItem: { id, title, category, condition, description, lendingType, location, ownerId, ownerName, ownerContact, status, listedDate, imageCode }
- * - JobOpportunity: { id, title, category, status, description, location, rate, duration, postedBy, postedById, postedDate, contactInfo }
+ * - JobOpportunity: { id, title, category, status, description, location, rate, duration, postedBy, postedById, postedDate, contactInfo, requirements }
  * - BorrowRequest: { id, itemId, itemTitle, requesterId, requesterName, requesterContact, ownerId, startDate, endDate, status, requestDate, message }
  * - Review: { id, rating, comment, reviewerName, reviewerRole, date, targetName }
  */
@@ -185,7 +185,8 @@ BCRSS.INITIAL_JOBS = [
     postedBy: 'Peter Langat',
     postedById: 'user-peter',
     postedDate: '2026-06-06',
-    contactInfo: '+254 721 987654'
+    contactInfo: '+254 721 987654',
+    requirements: ['Bring your own tools', 'Experience with furniture repair']
   },
   {
     id: 'job-farmhand',
@@ -199,7 +200,8 @@ BCRSS.INITIAL_JOBS = [
     postedBy: 'Elijah Sang',
     postedById: 'user-elijah',
     postedDate: '2026-06-06',
-    contactInfo: '+254 701 123456'
+    contactInfo: '+254 701 123456',
+    requirements: []
   },
   {
     id: 'job-tutor',
@@ -213,7 +215,8 @@ BCRSS.INITIAL_JOBS = [
     postedBy: 'Agnes Rotich',
     postedById: 'user-agnes',
     postedDate: '2026-06-06',
-    contactInfo: '+254 714 555666'
+    contactInfo: '+254 714 555666',
+    requirements: ['University student with strong academic record', 'Patience and reliability']
   },
   {
     id: 'job-teapicking',
@@ -227,7 +230,8 @@ BCRSS.INITIAL_JOBS = [
     postedBy: 'Chama Upendo',
     postedById: 'user-chama',
     postedDate: '2026-06-06',
-    contactInfo: '+254 731 222111'
+    contactInfo: '+254 731 222111',
+    requirements: []
   }
 ];
 

@@ -7,10 +7,10 @@ class JobOpportunitySerializer(serializers.ModelSerializer):
     
     class Meta:
         model = JobOpportunity
-        fields = ['id', 'title', 'category', 'status', 'description', 'location', 'rate', 'duration', 'contact_info', 'posted_by', 'posted_date', 'created_at', 'updated_at']
+        fields = ['id', 'title', 'category', 'status', 'description', 'location', 'rate', 'duration', 'contact_info', 'requirements', 'posted_by', 'posted_date', 'created_at', 'updated_at']
         read_only_fields = ['id', 'posted_date', 'created_at', 'updated_at']
 
 class JobOpportunityCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = JobOpportunity
-        fields = ['id', 'title', 'category', 'status', 'description', 'location', 'rate', 'duration', 'contact_info']
+        fields = ['id', 'title', 'category', 'status', 'description', 'location', 'rate', 'duration', 'contact_info', 'requirements']

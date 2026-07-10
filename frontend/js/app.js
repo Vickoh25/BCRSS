@@ -322,6 +322,12 @@ const APP = {
       return;
     }
 
+    // Collect requirements from the dynamic requirements section
+    const requirementInputs = document.querySelectorAll('.requirement-input');
+    const requirements = Array.from(requirementInputs)
+      .map(input => input.value.trim())
+      .filter(val => val !== '');
+
     const newJob = {
       id: `job-${Date.now()}`,
       title,
@@ -334,12 +340,14 @@ const APP = {
       postedBy: this.state.currentUser.name,
       postedById: this.state.currentUser.id,
       postedDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
-      contactInfo
+      contactInfo,
+      requirements
     };
 
     this.state.jobs = [newJob, ...this.state.jobs];
     this.state.activeModal = null;
-    alert(`Success! Your job post "${title}" is now visible to helpers on the board.`);
+    const reqSummary = requirements.length > 0 ? `\nRequirements: ${requirements.join(', ')}` : '\n(No special requirements)';
+    alert(`Success! Your job post "${title}" is now visible to helpers on the board.${reqSummary}`);
     this.render();
   },
 
@@ -498,6 +506,23 @@ const APP = {
       alert('Borrow ledger record deleted.');
       this.render();
     }
+  },
+
+  // ==================== REQUIREMENTS HELPER ====================
+  addRequirementRow() {
+    const container = document.getElementById('requirements-container');
+    if (!container) return;
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'requirement-input input-field mt-2';
+    input.placeholder = 'e.g. Bring your own tools, Valid ID required, KCSE certificate...';
+    container.appendChild(input);
+    input.focus();
+  },
+
+  removeRequirementRow(btn) {
+    const row = btn.closest('.requirement-row');
+    if (row) row.remove();
   },
 
   // ==================== GLOBAL EVENT BINDING ====================

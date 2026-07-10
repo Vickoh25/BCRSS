@@ -622,6 +622,15 @@ function renderJobCard(job, currentUser) {
       </div>
     ` : ''}
 
+    ${job.requirements && job.requirements.length > 0 ? `
+      <div class="mt-4 p-3 rounded-xl bg-amber-50 border border-amber-100">
+        <div class="flex items-center space-x-1.5 mb-2">${icon('alertCircle', 'w-3.5 h-3.5 text-amber-600')}<span class="text-xs font-semibold text-amber-800">Requirements</span></div>
+        <ul class="space-y-1 text-xs text-amber-900">
+          ${job.requirements.map(r => `<li class="flex items-start space-x-1.5">${icon('check', 'w-3 h-3 text-amber-600 flex-shrink-0 mt-0.5')}<span>${r}</span></li>`).join('')}
+        </ul>
+      </div>
+    ` : ''}
+
     ${job.status === 'Open'
       ? `<button class="w-full mt-4 py-2.5 text-center text-xs font-semibold rounded-xl transition-all ${isOwner ? 'bg-stone-100 text-stone-400 cursor-not-allowed' : 'bg-primary hover:bg-primary-hover text-white shadow-xs'}" ${isOwner ? 'disabled' : `onclick="APP.openApplyModal('${job.id}')"`}>${isOwner ? 'Your Posted Gig' : 'Apply / Contact Poster'}</button>`
       : '<button class="w-full mt-4 py-2.5 text-center text-xs font-semibold rounded-xl bg-stone-100 text-stone-400 cursor-not-allowed" disabled>Filled / Closed</button>'
@@ -806,6 +815,11 @@ function renderDashboardJobs(userJobs, state) {
             <div class="text-xs text-stone-400 mt-2 flex items-center space-x-4">
               <span>Rate: <span class="font-semibold text-stone-700">${job.rate}</span></span><span>•</span><span>Location: <span class="font-semibold text-stone-700">${job.location}</span></span>
             </div>
+            ${job.requirements && job.requirements.length > 0 ? `
+              <div class="mt-2 flex flex-wrap gap-1">
+                ${job.requirements.map(r => `<span class="px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-50 text-amber-800 border border-amber-200">${r}</span>`).join('')}
+              </div>
+            ` : ''}
           </div>
           <button class="px-3.5 py-1.5 rounded-lg text-xs font-semibold ${job.status === 'Open' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-primary'}" onclick="APP.toggleJobStatus('${job.id}')">${job.status === 'Open' ? 'Mark as Filled' : 'Reopen Post'}</button>
         </div>
@@ -1168,6 +1182,21 @@ function renderPostJobModal(state) {
               <label class="form-label">Contact Info *</label>
               <input type="text" class="input-field" id="job-contact" value="${currentUser.contact}" required>
             </div>
+          </div>
+          <div class="space-y-3 text-left mt-2 pt-4 border-t border-stone-200">
+            <div class="flex items-center justify-between">
+              <label class="form-label mb-0">Job Requirements</label>
+              <span class="text-xs text-stone-400">Add any documents, tools, or skills needed</span>
+            </div>
+            <div id="requirements-container">
+              <div class="requirement-row flex items-center gap-2">
+                <input type="text" class="requirement-input input-field" placeholder="e.g. Bring your own tools, Valid ID required, KCSE certificate...">
+                <button type="button" class="text-stone-400 hover:text-red-500 transition-colors" onclick="APP.removeRequirementRow(this)" title="Remove">${icon('x', 'w-4 h-4')}</button>
+              </div>
+            </div>
+            <button type="button" class="text-xs font-semibold text-primary hover:text-primary-hover flex items-center space-x-1 mt-1" onclick="APP.addRequirementRow()">
+              ${icon('plus', 'w-3.5 h-3.5')}<span>Add another requirement</span>
+            </button>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn-secondary" onclick="APP.closeModal()">Cancel</button>
