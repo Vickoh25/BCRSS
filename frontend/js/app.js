@@ -45,48 +45,55 @@ const APP = {
 
   async loadInitialData() {
     const s = this.state;
-    try {
-      // Check if we have a token and try to get current user
-      if (apiClient.token && !s.currentUser) {
-        try {
-          s.currentUser = await apiClient.getMe();
-        } catch (e) {
-          console.warn('Failed to fetch current user profile');
-        }
-      }
 
-      // Fetch all public data in parallel for speed
+    // Try to resolve current user if token exists
+    if (apiClient.token && !s.currentUser) {
+      try {
+        s.currentUser = await apiClient.getMe();
+      } catch (e) {
+        console.warn('Token invalid or expired, clearing stale auth');
+        apiClient.token = null;
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('refresh_token');
+        s.currentUser = null;
+      }
+    }
+
+    // Fetch public data (resources + jobs) — these work without auth
+    try {
       const [resources, jobs] = await Promise.all([
         apiClient.listResources(),
         apiClient.listJobs()
       ]);
       s.resources = resources;
       s.jobs = jobs;
+    } catch (e) {
+      console.warn('Public data fetch failed, using mock data');
+      s.resources = BCRSS.INITIAL_RESOURCES;
+      s.jobs = BCRSS.INITIAL_JOBS;
+    }
 
-      // If logged in, fetch personal data
-      if (s.currentUser) {
+    // If logged in, fetch personal data
+    if (s.currentUser) {
+      try {
         const [myReqs, recReqs] = await Promise.all([
           apiClient.getMyBorrowRequests(),
           apiClient.getReceivedBorrowRequests()
         ]);
         s.requests = [...myReqs, ...recReqs];
-        
-        // Also fetch all users if admin
-        if (s.currentUser.role === 'Admin') {
-          s.users = await apiClient.listUsers();
-        }
+      } catch (e) {
+        console.warn('Personal data fetch failed, requests will be empty');
+        s.requests = [];
       }
 
-      // Fallback to mock data if API is empty/failed (only for development)
-      if (s.resources.length === 0) s.resources = BCRSS.INITIAL_RESOURCES;
-      if (s.jobs.length === 0) s.jobs = BCRSS.INITIAL_JOBS;
-      
-    } catch (e) {
-      console.error('Data loading failed:', e);
-      // Fallback to mock data on error
-      s.resources = BCRSS.INITIAL_RESOURCES;
-      s.jobs = BCRSS.INITIAL_JOBS;
-      s.users = BCRSS.INITIAL_USERS;
+      // Admin: fetch all users
+      if (s.currentUser.role === 'Admin') {
+        try {
+          s.users = await apiClient.listUsers();
+        } catch (e) {
+          console.warn('User list fetch failed');
+        }
+      }
     }
   },
 
