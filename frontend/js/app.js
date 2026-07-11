@@ -310,20 +310,36 @@ const APP = {
   },
 
   async handleLogout() {
-    try {
-      await apiClient.logout();
-      this.state.currentUser = null;
-      this.state.currentTab = 'home';
-      alert('Logged out successfully.');
-      this.render();
-    } catch (err) {
-      console.error('Logout failed:', err);
-      // Force clear if API fails
-      localStorage.removeItem('auth_token');
-      localStorage.removeItem('refresh_token');
-      this.state.currentUser = null;
-      this.render();
+    const refreshToken = localStorage.getItem('refresh_token');
+    if (refreshToken) {
+      try {
+        await apiClient.request('/auth/logout/', {
+          method: 'POST',
+          body: { refresh: refreshToken }
+        });
+      } catch (e) {
+        console.warn('Backend logout failed (OK to ignore)');
+      }
     }
+
+    // Clear ALL state and localStorage
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('refresh_token');
+    localStorage.removeItem('bcrss_current_user');
+    apiClient.token = null;
+
+    // Reset all state to default
+    this.state.currentUser = null;
+    this.state.currentTab = 'home';
+    this.state.resources = [];
+    this.state.jobs = [];
+    this.state.requests = [];
+    this.state.users = [];
+    this.state.reviews = [];
+
+    // Reload from API (public data only)
+    await this.loadInitialData();
+    this.render();
   },
 
   toggleUserDropdown() {
