@@ -215,6 +215,12 @@ const APP = {
 
   // ==================== NAVIGATION ====================
   changeTab(tab) {
+    // Block non-admins from accessing admin page
+    if (tab === 'admin' && (!this.state.currentUser || this.state.currentUser.role !== 'Admin')) {
+      this.state.currentTab = 'home';
+      this.render();
+      return;
+    }
     this.state.currentTab = tab;
     this.state.userDropdownOpen = false;
     this.state.mobileMenuOpen = false;

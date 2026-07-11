@@ -97,9 +97,11 @@ function renderHeader(state) {
     { id: 'home', label: 'Home' },
     { id: 'resources', label: 'Resources' },
     { id: 'jobs', label: 'Jobs' },
-    { id: 'dashboard', label: 'Dashboard' },
-    { id: 'admin', label: 'Admin' }
+    { id: 'dashboard', label: 'Dashboard' }
   ];
+  if (currentUser && currentUser.role === 'Admin') {
+    navItems.push({ id: 'admin', label: 'Admin' });
+  }
 
   const initials = currentUser ? currentUser.name.split(' ').map(n => n[0]).join('') : '';
   const firstLetter = currentUser ? currentUser.name[0] : '';
@@ -173,12 +175,13 @@ function renderUserDropdown(state) {
     </div>
 
     <div class="dropdown-section">
-      <button class="dropdown-item" onclick="APP.changeTab('admin'); APP.toggleUserDropdown();">
-        ${icon('settings', 'w-4 h-4 text-stone-400')}<span>Admin Panel</span>
-      </button>
       <button class="dropdown-item" onclick="APP.changeTab('dashboard'); APP.toggleUserDropdown();">
         ${icon('users', 'w-4 h-4 text-stone-400')}<span>My Dashboard</span>
       </button>
+      ${currentUser.role === 'Admin' ? `
+      <button class="dropdown-item" onclick="APP.changeTab('admin'); APP.toggleUserDropdown();">
+        ${icon('settings', 'w-4 h-4 text-stone-400')}<span>Admin Panel</span>
+      </button>` : ''}
     </div>
 
     <div class="p-1 bg-stone-100/30">
@@ -820,6 +823,9 @@ function renderDashboardJobs(userJobs, state) {
 
 // ==================== ADMIN PAGE ====================
 function renderAdminPage(state) {
+  if (!state.currentUser || state.currentUser.role !== 'Admin') {
+    return '<div class="bg-page min-h-screen flex items-center justify-center"><div class="text-center"><h1 class="text-2xl font-serif font-bold text-stone-800 mb-2">Access Denied</h1><p class="text-stone-500 text-sm">Only admins can view this page.</p><button class="btn-primary mt-4" onclick="APP.changeTab(\'home\')">Go Home</button></div></div>';
+  }
   const { resources, jobs, requests, users, reviews, adminTab } = state;
   const totalResources = resources.length;
   const availableResources = resources.filter(r => r.status === 'Available').length;
