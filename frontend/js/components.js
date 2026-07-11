@@ -163,7 +163,7 @@ function renderHeader(state) {
 
 function renderUserDropdown(state) {
   const { currentUser } = state;
-  if (!state.userDropdownOpen) return '';
+  if (!state.userDropdownOpen || !currentUser) return '';
 
   return `
   <div class="fixed inset-0 z-30" onclick="APP.toggleUserDropdown()"></div>
@@ -479,7 +479,7 @@ function renderResourcesPage(state) {
 }
 
 function renderResourceCard(item, currentUser) {
-  const isOwner = item.ownerId === currentUser.id;
+  const isOwner = currentUser && item.ownerId === currentUser.id;
   const catClass = item.category === 'farm tools' ? 'cat-tag-farm' : item.category === 'textbooks' ? 'cat-tag-textbook' : 'cat-tag-household';
 
   return `<div class="resource-card group" onclick="event.stopPropagation()">
@@ -582,7 +582,7 @@ function renderJobsPage(state) {
 }
 
 function renderJobCard(job, currentUser) {
-  const isOwner = job.postedById === currentUser.id;
+  const isOwner = currentUser && job.postedById === currentUser.id;
   const badgeColors = {
     'Skilled Trade': 'bg-orange-50 text-orange-800 border-orange-100',
     'Farm Work': 'bg-emerald-50 text-emerald-800 border-emerald-100',
@@ -635,10 +635,11 @@ function renderJobCard(job, currentUser) {
 function renderDashboardPage(state) {
   const { resources, jobs, requests, currentUser, dashboardSubTab } = state;
 
-  const userResources = resources.filter(r => r.ownerId === currentUser.id);
-  const userJobs = jobs.filter(j => j.postedById === currentUser.id);
-  const incomingRequests = requests.filter(req => req.ownerId === currentUser.id);
-  const outgoingRequests = requests.filter(req => req.requesterId === currentUser.id);
+  const uid = currentUser ? currentUser.id : null;
+  const userResources = resources.filter(r => r.ownerId === uid);
+  const userJobs = jobs.filter(j => j.postedById === uid);
+  const incomingRequests = requests.filter(req => req.ownerId === uid);
+  const outgoingRequests = requests.filter(req => req.requesterId === uid);
   const pendingIncoming = incomingRequests.filter(r => r.status === 'Pending').length;
 
   return `<div class="bg-page min-h-screen py-10">
