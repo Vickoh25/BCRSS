@@ -46,6 +46,14 @@ const APP = {
   async loadInitialData() {
     const s = this.state;
 
+    // Clear stale localStorage data — we now use the API as the source of truth
+    // Only keep data if we have a valid token; otherwise start fresh
+    if (!apiClient.token) {
+      localStorage.removeItem('bcrss_current_user');
+      s.currentUser = null;
+      console.log('No auth token, starting fresh (login/register to begin)');
+    }
+
     // Try to resolve current user if token exists
     if (apiClient.token && !s.currentUser) {
       try {
@@ -55,6 +63,7 @@ const APP = {
         apiClient.token = null;
         localStorage.removeItem('auth_token');
         localStorage.removeItem('refresh_token');
+        localStorage.removeItem('bcrss_current_user');
         s.currentUser = null;
       }
     }
