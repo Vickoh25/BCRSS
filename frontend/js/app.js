@@ -37,8 +37,24 @@ const APP = {
 
   // ==================== INITIALISATION ====================
   async init() {
+    // Step 1: Clear stale localStorage data if no valid token
+    if (!apiClient.token) {
+      localStorage.removeItem('bcrss_current_user');
+      localStorage.removeItem('bcrss_users');
+      localStorage.removeItem('bcrss_resources');
+      localStorage.removeItem('bcrss_jobs');
+      localStorage.removeItem('bcrss_requests');
+      localStorage.removeItem('bcrss_reviews');
+      console.log('No auth token — cleared stale localStorage. Login/register to begin.');
+    }
+
+    // Step 2: Load what's left in storage (will be empty if token was missing)
     this.loadFromStorage();
+
+    // Step 3: Fetch from API and handle auth
     await this.loadInitialData();
+
+    // Step 4: Render
     this.render();
     this.bindGlobalEvents();
   },
@@ -46,24 +62,15 @@ const APP = {
   async loadInitialData() {
     const s = this.state;
 
-    // Clear stale localStorage data — we now use the API as the source of truth
-    // Only keep data if we have a valid token; otherwise start fresh
-    if (!apiClient.token) {
-      localStorage.removeItem('bcrss_current_user');
-      s.currentUser = null;
-      console.log('No auth token, starting fresh (login/register to begin)');
-    }
-
-    // Try to resolve current user if token exists
+    // Resolve current user from API if token exists (init already cleared stale storage)
     if (apiClient.token && !s.currentUser) {
       try {
         s.currentUser = await apiClient.getMe();
       } catch (e) {
-        console.warn('Token invalid or expired, clearing stale auth');
+        console.warn('Token invalid, clearing auth and starting fresh');
         apiClient.token = null;
         localStorage.removeItem('auth_token');
         localStorage.removeItem('refresh_token');
-        localStorage.removeItem('bcrss_current_user');
         s.currentUser = null;
       }
     }
