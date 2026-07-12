@@ -173,7 +173,8 @@ class APIClient {
     return this.mapUser(u);
   }
   async listUsers() { 
-    const users = await this.request('/users/');
+    const data = await this.request('/users/admin_list/');
+    const users = data.results || data;
     return users.map(u => this.mapUser(u));
   }
   promoteToAdmin(userId) { return this.request(`/users/${userId}/promote_to_admin/`, { method: 'POST' }); }
