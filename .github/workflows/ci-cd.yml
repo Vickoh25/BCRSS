@@ -1,0 +1,73 @@
+name: BCRSS CI/CD
+
+on:
+  push:
+    branches: [dev, main]
+  pull_request:
+    branches: [dev, main]
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: bcrss_test
+          MYSQL_USER: test
+          MYSQL_PASSWORD: test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          pip install -r requirements.txt
+
+      - name: Run Django checks
+        run: |
+          cd backend
+          python manage.py check
+        env:
+          DATABASE_URL: mysql://test:test@127.0.0.1:3306/bcrss_test
+          SECRET_KEY: test-secret-key-for-ci
+
+      - name: Run tests
+        run: |
+          cd backend
+          python manage.py test --verbosity 2
+        env:
+          DATABASE_URL: mysql://test:test@127.0.0.1:3306/bcrss_test
+          SECRET_KEY: test-secret-key-for-ci
+
+  deploy:
+    name: Deploy to dev
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/dev' && github.event_name == 'push'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy
+        run: |
+          echo "Deployment trigger fired for dev branch."
+          echo "Configure your deployment target (Railway, Render, etc.) with the following step."
+        env:
+          DEPLOY_URL: ${{ secrets.DEPLOY_HOOK_URL }}
