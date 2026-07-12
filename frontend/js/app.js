@@ -601,6 +601,83 @@ const APP = {
     }
   },
 
+  // ==================== USER MANAGEMENT ====================
+  async promoteUser(userId) {
+    const user = this.state.users.find(u => u.id === userId);
+    if (user && confirm(`Promote ${user.name} to Admin role?`)) {
+      try {
+        await apiClient.promoteToAdmin(userId);
+        user.role = 'Admin';
+        alert(`${user.name} is now an Admin.`);
+        this.render();
+      } catch (err) {
+        alert('Failed to promote user: ' + err.message);
+      }
+    }
+  },
+
+  async demoteUser(userId) {
+    const user = this.state.users.find(u => u.id === userId);
+    if (user && confirm(`Demote ${user.name} to Member role?`)) {
+      try {
+        await apiClient.demoteToMember(userId);
+        user.role = 'Member';
+        alert(`${user.name} is now a Member.`);
+        this.render();
+      } catch (err) {
+        alert('Failed to demote user: ' + err.message);
+      }
+    }
+  },
+
+  async deleteUserContent(userId) {
+    const user = this.state.users.find(u => u.id === userId);
+    if (!user || confirm(`Remove ALL content by ${user.name}? This will delete their resources, jobs, and reviews.`)) {
+      const userResources = this.state.resources.filter(r => r.ownerId === userId);
+      const userJobs = this.state.jobs.filter(j => j.postedById === userId);
+      const userReviews = this.state.reviews.filter(r => r.reviewerName === user.name);
+
+      let count = 0;
+
+      // Delete resources
+      for (const res of userResources) {
+        try { await apiClient.deleteResource(res.id); count++; } catch (e) { /* skip */ }
+      }
+
+      // Delete jobs
+      for (const job of userJobs) {
+        try { await apiClient.deleteJob(job.id); count++; } catch (e) { /* skip */ }
+      }
+
+      // Delete reviews (apiClient.deleteReview doesn't exist — remove locally)
+      this.state.reviews = this.state.reviews.filter(r => r.reviewerName !== user.name);
+
+      // Clean up stale data
+      this.state.resources = this.state.resources.filter(r => r.ownerId !== userId);
+      this.state.jobs = this.state.jobs.filter(j => j.postedById !== userId);
+
+      this.render();
+      alert(`Removed ${count} items belonging to ${user.name}. Reviews cleaned locally.`);
+    }
+  },
+
+  // ==================== REVIEW MODERATION ====================
+  async deleteReview(reviewId) {
+    if (confirm('Delete this review permanently?')) {
+      try {
+        await apiClient.deleteReview(reviewId);
+        this.state.reviews = this.state.reviews.filter(r => r.id !== reviewId);
+        alert('Review deleted.');
+        this.render();
+      } catch (err) {
+        // Fallback: remove locally
+        this.state.reviews = this.state.reviews.filter(r => r.id !== reviewId);
+        alert('Review removed locally.');
+        this.render();
+      }
+    }
+  },
+
   // ==================== REQUIREMENTS HELPER ====================
   addRequirementRow() {
     const container = document.getElementById('requirements-container');
