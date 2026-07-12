@@ -828,6 +828,7 @@ function renderAdminPage(state) {
     return '<div class="bg-page min-h-screen flex items-center justify-center"><div class="text-center"><h1 class="text-2xl font-serif font-bold text-stone-800 mb-2">Access Denied</h1><p class="text-stone-500 text-sm">Only admins can view this page.</p><button class="btn-primary mt-4" onclick="APP.changeTab(\'home\')">Go Home</button></div></div>';
   }
   const { resources, jobs, requests, users, reviews, adminTab } = state;
+  const totalUsers = users.length;
   const totalResources = resources.length;
   const availableResources = resources.filter(r => r.status === 'Available').length;
   const totalRequests = requests.length;
@@ -847,18 +848,22 @@ function renderAdminPage(state) {
       </div>
 
       <!-- KPI Cards -->
-      <div class="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+      <div class="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-10">
         <div class="metric-card flex justify-between items-center">
-          <div><span class="text-stone-400 text-xs font-semibold uppercase tracking-wider block mb-1">Total Resources</span><div class="text-3xl font-bold text-stone-900">${totalResources}</div><span class="text-stone-500 text-xs mt-1 block">${availableResources} available</span></div>
+          <div><span class="text-stone-400 text-xs font-semibold uppercase tracking-wider block mb-1">Users</span><div class="text-3xl font-bold text-stone-900">${totalUsers}</div></div>
+          <div class="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100">${icon('users', 'w-5 h-5')}</div>
+        </div>
+        <div class="metric-card flex justify-between items-center">
+          <div><span class="text-stone-400 text-xs font-semibold uppercase tracking-wider block mb-1">Resources</span><div class="text-3xl font-bold text-stone-900">${totalResources}</div><span class="text-stone-500 text-xs mt-1 block">${availableResources} available</span></div>
           <div class="w-10 h-10 rounded-lg bg-stone-50 text-stone-400 flex items-center justify-center border border-stone-200">${icon('clipboard', 'w-5 h-5')}</div>
         </div>
         <div class="metric-card flex justify-between items-center">
-          <div><span class="text-stone-400 text-xs font-semibold uppercase tracking-wider block mb-1">Borrow Requests</span><div class="text-3xl font-bold text-stone-900">${totalRequests}</div><span class="text-stone-500 text-xs mt-1 block">${pendingRequests} pending</span></div>
+          <div><span class="text-stone-400 text-xs font-semibold uppercase tracking-wider block mb-1">Requests</span><div class="text-3xl font-bold text-stone-900">${totalRequests}</div><span class="text-stone-500 text-xs mt-1 block">${pendingRequests} pending</span></div>
           <div class="w-10 h-10 rounded-lg bg-primary-light text-primary flex items-center justify-center border border-emerald-100">${icon('refreshCw', 'w-5 h-5 animate-spin-slow')}</div>
         </div>
         <div class="metric-card flex justify-between items-center">
-          <div><span class="text-stone-400 text-xs font-semibold uppercase tracking-wider block mb-1">Jobs Posted</span><div class="text-3xl font-bold text-stone-900">${totalJobs}</div><span class="text-stone-500 text-xs mt-1 block">${openJobs} open</span></div>
-          <div class="w-10 h-10 rounded-lg bg-orange-50 text-orange-600 flex items-center justify-center border border-orange-100">${icon('users', 'w-5 h-5')}</div>
+          <div><span class="text-stone-400 text-xs font-semibold uppercase tracking-wider block mb-1">Jobs</span><div class="text-3xl font-bold text-stone-900">${totalJobs}</div><span class="text-stone-500 text-xs mt-1 block">${openJobs} open</span></div>
+          <div class="w-10 h-10 rounded-lg bg-orange-50 text-orange-600 flex items-center justify-center border border-orange-100">${icon('briefcase', 'w-5 h-5')}</div>
         </div>
         <div class="metric-card flex justify-between items-center">
           <div><span class="text-stone-400 text-xs font-semibold uppercase tracking-wider block mb-1">Reviews</span><div class="text-3xl font-bold text-stone-900">${totalReviews}</div><span class="text-stone-500 text-xs mt-1 block">${totalReviews === 0 ? 'No reviews yet' : 'Trust score: 4.8★'}</span></div>
@@ -891,8 +896,8 @@ function renderAdminPage(state) {
       ${adminTab === 'resources' ? renderAdminResources(state) : ''}
       ${adminTab === 'requests' ? renderAdminRequests(state) : ''}
       ${adminTab === 'jobs' ? renderAdminJobs(state) : ''}
-      ${adminTab === 'users' ? renderAdminUsers(users) : ''}
-      ${adminTab === 'reviews' ? renderAdminReviews(reviews) : ''}
+      ${adminTab === 'users' ? renderAdminUsers(state) : ''}
+      ${adminTab === 'reviews' ? renderAdminReviews(state) : ''}
     </div>
   </div>`;
 }
@@ -998,43 +1003,78 @@ function renderAdminJobs(state) {
   </div>`;
 }
 
-function renderAdminUsers(users) {
+function renderAdminUsers(state) {
+  const { users, currentUser } = state;
+  const filtered = users.filter(u =>
+    u.name.toLowerCase().includes(state.adminSearch.toLowerCase()) ||
+    u.email.toLowerCase().includes(state.adminSearch.toLowerCase()) ||
+    (u.location || '').toLowerCase().includes(state.adminSearch.toLowerCase())
+  );
+
   return `<div class="bg-white rounded-2xl border border-[#e2dfd5] overflow-x-auto shadow-xs">
     <table class="data-table">
       <thead><tr>
-        <th>Name</th><th>Email</th><th>Location</th><th>Contact</th><th>Role</th>
+        <th>Name</th><th>Email</th><th>Location</th><th>Contact</th><th>Role</th><th>Resources</th><th class="text-right">Actions</th>
       </tr></thead>
       <tbody>
-        ${users.map(user => `
-          <tr>
-            <td class="font-bold text-stone-800 flex items-center space-x-2">
-              <div class="avatar-sm ${user.avatarColor}">${user.name[0]}</div>
-              <span>${user.name}</span>
-            </td>
-            <td class="text-stone-600 font-mono text-xs">${user.email}</td>
-            <td class="text-stone-600">${user.location}</td>
-            <td class="text-stone-500 text-xs font-mono">${user.contact}</td>
-            <td><span class="badge-sm ${user.role === 'Admin' ? 'bg-purple-100 text-purple-800' : 'bg-stone-100 text-stone-600'}">${user.role}</span></td>
-          </tr>
-        `).join('')}
+        ${filtered.length === 0
+          ? '<tr><td colspan="7" class="px-6 py-12 text-center text-stone-400">No users found</td></tr>'
+          : filtered.map(user => {
+            const userResources = state.resources.filter(r => r.ownerId === user.id);
+            const userJobs = state.jobs.filter(j => j.postedById === user.id);
+            const isSelf = user.id === currentUser.id;
+            const isOnlyAdmin = user.role === 'Admin' && users.filter(u => u.role === 'Admin').length === 1;
+            return `<tr>
+              <td class="font-bold text-stone-800 flex items-center space-x-2">
+                <div class="avatar-sm ${user.avatarColor}">${user.name[0]}</div>
+                <span>${user.name}</span>
+              </td>
+              <td class="text-stone-600 font-mono text-xs">${user.email}</td>
+              <td class="text-stone-600">${user.location || '—'}</td>
+              <td class="text-stone-500 text-xs font-mono">${user.contact || '—'}</td>
+              <td><span class="badge-sm ${user.role === 'Admin' ? 'bg-purple-100 text-purple-800' : 'bg-stone-100 text-stone-600'}">${user.role}</span></td>
+              <td class="text-xs text-stone-500">${userResources.length} listed${userJobs.length > 0 ? `, ${userJobs.length} job` : ''}</td>
+              <td class="text-right space-x-1">
+                ${!isSelf && !isOnlyAdmin ? `
+                  ${user.role === 'Member' ? `<button class="btn-promote-sm" onclick="APP.promoteUser(${user.id})" title="Promote to Admin">${icon('shield', 'w-3.5 h-3.5')}</button>` : ''}
+                  ${user.role === 'Admin' ? `<button class="btn-demote-sm" onclick="APP.demoteUser(${user.id})" title="Demote to Member">${icon('shieldAlert', 'w-3.5 h-3.5')}</button>` : ''}
+                ` : ''}
+                <button class="btn-danger-sm" onclick="APP.deleteUserContent(${user.id})" title="Remove all user content">
+                  ${icon('trash2', 'w-3.5 h-3.5')}
+                </button>
+              </td>
+            </tr>`;
+          }).join('')}
       </tbody>
     </table>
   </div>`;
 }
 
-function renderAdminReviews(reviews) {
+function renderAdminReviews(state) {
+  const { reviews, adminSearch } = state;
+  const filtered = reviews.filter(r =>
+    r.reviewerName.toLowerCase().includes(adminSearch.toLowerCase()) ||
+    r.targetName.toLowerCase().includes(adminSearch.toLowerCase()) ||
+    (r.comment || '').toLowerCase().includes(adminSearch.toLowerCase())
+  );
+
   return `<div class="bg-white rounded-2xl border border-[#e2dfd5] p-6 shadow-xs max-w-3xl">
     <h3 class="font-serif text-lg font-bold text-[#1c1c1c] mb-6">Peer Exchange Ratings</h3>
-    ${reviews.length === 0
-      ? '<div class="py-12 text-center text-stone-400">No reviews have been left yet.</div>'
-      : `<div class="space-y-6">${reviews.map(rev => `
+    ${filtered.length === 0
+      ? '<div class="py-12 text-center text-stone-400">No reviews found.</div>'
+      : `<div class="space-y-4">${filtered.map(rev => `
         <div class="p-4 bg-[#faf9f6] border border-stone-200 rounded-xl space-y-2">
           <div class="flex items-center justify-between">
             <div class="flex items-center space-x-2">
               <span class="font-semibold text-stone-800 text-sm">${rev.reviewerName}</span>
               <span class="text-[10px] text-stone-400 capitalize bg-stone-100 border border-stone-200/50 rounded-sm px-1.5 py-px">${rev.reviewerRole}</span>
             </div>
-            <span class="text-xs text-stone-400">${rev.date}</span>
+            <div class="flex items-center space-x-2">
+              <span class="text-xs text-stone-400">${rev.date}</span>
+              <button class="btn-danger-sm" onclick="APP.deleteReview(${rev.id})" title="Delete review">
+                ${icon('trash2', 'w-3.5 h-3.5')}
+              </button>
+            </div>
           </div>
           <div class="flex items-center space-x-0.5">
             ${Array.from({length: 5}).map((_, i) => `
