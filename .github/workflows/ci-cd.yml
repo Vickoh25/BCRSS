@@ -1,5 +1,4 @@
 name: BCRSS CI/CD
-
 on:
   push:
     branches: [dev, main]
@@ -10,7 +9,6 @@ jobs:
   test:
     name: Run Tests
     runs-on: ubuntu-latest
-
     services:
       mysql:
         image: mysql:8.0
@@ -26,45 +24,83 @@ jobs:
           --health-interval=10s
           --health-timeout=5s
           --health-retries=3
-
+    
     steps:
       - uses: actions/checkout@v4
-
+      
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-
-      - name: Install dependencies
+      
+      - name: Install MySQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y default-mysql-client libmysqlclient-dev
+      
+      - name: Wait for MySQL
+        run: |
+          until mysqladmin ping -h"127.0.0.1" -u"test" -p"test" --silent; do
+            echo 'Waiting for MySQL to be ready...'
+            sleep 1
+          done
+      
+      - name: Install Python dependencies
         run: |
           cd backend
+          python -m pip install --upgrade pip
           pip install -r requirements.txt
-
+      
       - name: Run Django checks
         run: |
           cd backend
           python manage.py check
         env:
-          DATABASE_URL: mysql://test:test@127.0.0.1:3306/bcrss_test
+          DB_ENGINE: django.db.backends.mysql
+          DB_NAME: bcrss_test
+          DB_USER: test
+          DB_PASSWORD: test
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
           SECRET_KEY: test-secret-key-for-ci
-
+          DEBUG: "False"
+      
+      - name: Run migrations
+        run: |
+          cd backend
+          python manage.py migrate
+        env:
+          DB_ENGINE: django.db.backends.mysql
+          DB_NAME: bcrss_test
+          DB_USER: test
+          DB_PASSWORD: test
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          SECRET_KEY: test-secret-key-for-ci
+          DEBUG: "False"
+      
       - name: Run tests
         run: |
           cd backend
           python manage.py test --verbosity 2
         env:
-          DATABASE_URL: mysql://test:test@127.0.0.1:3306/bcrss_test
+          DB_ENGINE: django.db.backends.mysql
+          DB_NAME: bcrss_test
+          DB_USER: test
+          DB_PASSWORD: test
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
           SECRET_KEY: test-secret-key-for-ci
+          DEBUG: "False"
 
   deploy:
     name: Deploy to dev
     needs: test
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/dev' && github.event_name == 'push'
-
     steps:
       - uses: actions/checkout@v4
-
+      
       - name: Deploy
         run: |
           echo "Deployment trigger fired for dev branch."
