@@ -33,7 +33,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.12'
 
       - name: Install dependencies
         run: |
@@ -68,6 +68,5 @@ jobs:
       - name: Deploy
         run: |
           echo "Deployment trigger fired for dev branch."
-          echo "Configure your deployment target (Railway, Render, etc.) with the following step."
         env:
           DEPLOY_URL: ${{ secrets.DEPLOY_HOOK_URL }}
