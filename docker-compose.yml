@@ -4,8 +4,25 @@ services:
     container_name: bcrss-backend
     restart: unless-stopped
 
-    env_file:
-      - ./backend/.env
+    environment:
+      SECRET_KEY: ${SECRET_KEY:-django-test-secret}
+      DEBUG: ${DEBUG:-False}
+      USE_MYSQL: ${USE_MYSQL:-False}
+
+      DB_HOST: ${DB_HOST:-host.docker.internal}
+      DB_PORT: ${DB_PORT:-3306}
+      DB_NAME: ${DB_NAME:-bcrss}
+      DB_USER: ${DB_USER:-root}
+      DB_PASSWORD: ${DB_PASSWORD:-}
+
+      EMAIL_HOST: ${EMAIL_HOST:-}
+      EMAIL_PORT: ${EMAIL_PORT:-587}
+      EMAIL_HOST_USER: ${EMAIL_HOST_USER:-}
+      EMAIL_HOST_PASSWORD: ${EMAIL_HOST_PASSWORD:-}
+
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:-}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:-}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:-}
 
     ports:
       - "8000:8000"
