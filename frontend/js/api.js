@@ -3,7 +3,7 @@
  * Handles all HTTP requests to the Django REST API
  */
 
-const API_BASE_URL = 'http://localhost:8000/api';
+const API_BASE_URL = '/api';
 
 class APIClient {
   constructor(baseURL = API_BASE_URL) {

@@ -1,10 +1,17 @@
 #!/bin/sh
 
-echo "Applying database migrations..."
-python manage.py migrate --noinput
+echo "Waiting for MySQL..."
 
-echo "Collecting static files..."
+while ! nc -z "$DB_HOST" "$DB_PORT"; do
+    echo "Waiting..."
+    sleep 2
+done
+
+echo "Database ready."
+
+python manage.py migrate --noinput
 python manage.py collectstatic --noinput
 
-echo "Starting Gunicorn..."
-exec gunicorn bcrss_config.wsgi:application --bind 0.0.0.0:8000
+exec gunicorn bcrss_config.wsgi:application \
+    --bind 0.0.0.0:8000 \
+    --workers 3
