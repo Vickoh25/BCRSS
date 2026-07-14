@@ -16,26 +16,13 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
-    healthcheck:
-      test:
-        [
-          "CMD",
-          "python",
-          "-c",
-          "import urllib.request; urllib.request.urlopen('http://localhost:8000/admin/login/')"
-        ]
-      interval: 20s
-      timeout: 10s
-      retries: 5
-
   frontend:
     build: ./frontend
     container_name: bcrss-frontend
     restart: unless-stopped
 
     depends_on:
-      backend:
-        condition: service_healthy
+      - backend
 
     ports:
       - "80:80"
