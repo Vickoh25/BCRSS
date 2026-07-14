@@ -7,10 +7,10 @@ WORKDIR /app
 
 RUN apt-get update && apt-get install -y \
     gcc \
+    curl \
+    netcat-openbsd \
     default-libmysqlclient-dev \
     pkg-config \
-    netcat-openbsd \
-    curl \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
@@ -20,9 +20,8 @@ RUN pip install -r requirements.txt
 
 COPY . .
 
+RUN chmod +x /app/entrypoint.sh
+
 EXPOSE 8000
 
-CMD sh -c "\
-python manage.py migrate --noinput && \
-python manage.py collectstatic --noinput && \
-gunicorn bcrss_config.wsgi:application --bind 0.0.0.0:8000 --workers 3"
+ENTRYPOINT ["/bin/sh", "/app/entrypoint.sh"]
