@@ -15,49 +15,49 @@ jobs:
         run: |
           echo "Checking required GitHub secrets..."
           MISSING_SECRETS=""
-          
+
           if [ -z "${{ secrets.SECRET_KEY }}" ]; then
             MISSING_SECRETS="${MISSING_SECRETS}[MISSING] SECRET_KEY\n"
           else
             echo "[OK] SECRET_KEY is set"
           fi
-          
+
           if [ -z "${{ secrets.CLOUDINARY_CLOUD_NAME }}" ]; then
             MISSING_SECRETS="${MISSING_SECRETS}[MISSING] CLOUDINARY_CLOUD_NAME\n"
           else
             echo "[OK] CLOUDINARY_CLOUD_NAME is set"
           fi
-          
+
           if [ -z "${{ secrets.CLOUDINARY_API_KEY }}" ]; then
             MISSING_SECRETS="${MISSING_SECRETS}[MISSING] CLOUDINARY_API_KEY\n"
           else
             echo "[OK] CLOUDINARY_API_KEY is set"
           fi
-          
+
           if [ -z "${{ secrets.CLOUDINARY_API_SECRET }}" ]; then
             MISSING_SECRETS="${MISSING_SECRETS}[MISSING] CLOUDINARY_API_SECRET\n"
           else
             echo "[OK] CLOUDINARY_API_SECRET is set"
           fi
-          
+
           if [ -z "${{ secrets.EMAIL_HOST }}" ]; then
             MISSING_SECRETS="${MISSING_SECRETS}[MISSING] EMAIL_HOST\n"
           else
             echo "[OK] EMAIL_HOST is set"
           fi
-          
+
           if [ -z "${{ secrets.EMAIL_HOST_USER }}" ]; then
             MISSING_SECRETS="${MISSING_SECRETS}[MISSING] EMAIL_HOST_USER\n"
           else
             echo "[OK] EMAIL_HOST_USER is set"
           fi
-          
+
           if [ -z "${{ secrets.EMAIL_HOST_PASSWORD }}" ]; then
             MISSING_SECRETS="${MISSING_SECRETS}[MISSING] EMAIL_HOST_PASSWORD\n"
           else
             echo "[OK] EMAIL_HOST_PASSWORD is set"
           fi
-          
+
           if [ -n "$MISSING_SECRETS" ]; then
             echo ""
             echo "ERROR: Missing required secrets. Please add them to GitHub Secrets:"
@@ -66,7 +66,7 @@ jobs:
             echo "To add secrets, go to: Settings > Secrets and variables > Actions"
             exit 1
           fi
-          
+
           echo ""
           echo "SUCCESS: All required secrets are configured!"
 
@@ -136,20 +136,20 @@ jobs:
           TIMEOUT=90
           ELAPSED=0
           INTERVAL=3
-          
+
           while [ $ELAPSED -lt $TIMEOUT ]; do
             echo "Attempt $((ELAPSED / INTERVAL + 1)): Checking backend health ($ELAPSED/$TIMEOUT seconds)..."
-            
+
             if curl -s -f http://localhost:8000/admin/login/ > /dev/null 2>&1; then
               echo "Backend is responding to requests"
               exit 0
             fi
-            
+
             echo "Backend not ready yet, waiting..."
             sleep $INTERVAL
             ELAPSED=$((ELAPSED + INTERVAL))
           done
-          
+
           echo "ERROR: Backend health check failed after ${TIMEOUT} seconds"
           echo ""
           echo "Container status:"
@@ -161,6 +161,17 @@ jobs:
           echo "Checking if container is still running:"
           docker compose exec -T bcrss-backend echo "Container is running" || echo "Container crashed or unreachable"
           exit 1
+
+      - name: Verify Container Still Running
+        run: |
+          echo "Double-checking container status before Django checks..."
+          docker compose ps
+          echo ""
+          echo "Testing direct connection to backend..."
+          curl -v http://localhost:8000/admin/login/ || echo "WARNING: Direct curl failed"
+          echo ""
+          echo "Attempting docker exec test..."
+          docker compose exec -T bcrss-backend echo "Container is accessible" || exit 1
 
       - name: Django System Check
         run: |
