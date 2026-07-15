@@ -96,6 +96,8 @@ jobs:
           DEFAULT_FROM_EMAIL=noreply@bcrss.com
           EOF
           echo ".env file created successfully"
+          echo "File contents (without secrets):"
+          grep -v "SECRET\|PASSWORD\|API" backend/.env || true
 
       - name: Build Docker Images
         run: |
@@ -108,31 +110,56 @@ jobs:
           echo "Starting containers..."
           docker compose up -d
           echo "Containers started"
+          sleep 5
+          echo "Container status after 5 seconds:"
+          docker compose ps
+
+      - name: Check Container Status
+        run: |
+          echo "Checking if bcrss-backend container is running..."
+          if docker compose ps | grep -q "bcrss-backend.*Up"; then
+            echo "Container is running"
+          else
+            echo "ERROR: Container is not running!"
+            echo ""
+            echo "Container status:"
+            docker compose ps
+            echo ""
+            echo "Backend container logs:"
+            docker compose logs bcrss-backend
+            exit 1
+          fi
 
       - name: Wait for Backend Health Check
         run: |
           echo "Waiting for backend to be ready..."
-          TIMEOUT=60
+          TIMEOUT=90
           ELAPSED=0
-          INTERVAL=2
+          INTERVAL=3
           
           while [ $ELAPSED -lt $TIMEOUT ]; do
-            if curl -f http://localhost:8000/admin/login/ > /dev/null 2>&1; then
-              echo "Backend is up and responding"
+            echo "Attempt $((ELAPSED / INTERVAL + 1)): Checking backend health ($ELAPSED/$TIMEOUT seconds)..."
+            
+            if curl -s -f http://localhost:8000/admin/login/ > /dev/null 2>&1; then
+              echo "Backend is responding to requests"
               exit 0
             fi
-            echo "Waiting for backend... ($ELAPSED/$TIMEOUT seconds)"
+            
+            echo "Backend not ready yet, waiting..."
             sleep $INTERVAL
             ELAPSED=$((ELAPSED + INTERVAL))
           done
           
-          echo "ERROR: Backend failed to start within ${TIMEOUT} seconds"
+          echo "ERROR: Backend health check failed after ${TIMEOUT} seconds"
           echo ""
-          echo "Backend Logs:"
+          echo "Container status:"
+          docker compose ps
+          echo ""
+          echo "Backend container logs:"
           docker compose logs bcrss-backend
           echo ""
-          echo "Docker Status:"
-          docker compose ps
+          echo "Checking if container is still running:"
+          docker compose exec -T bcrss-backend echo "Container is running" || echo "Container crashed or unreachable"
           exit 1
 
       - name: Django System Check
@@ -157,14 +184,25 @@ jobs:
         if: always()
         run: |
           echo "Shutting down containers..."
-          docker compose down
+          docker compose down -v
           echo "Cleanup completed"
 
-      - name: Show Backend Logs on Failure
+      - name: Show Detailed Logs on Failure
         if: failure()
         run: |
-          echo "ERROR: Workflow failed. Showing backend logs:"
-          docker compose logs bcrss-backend || true
+          echo "=== WORKFLOW FAILED - DEBUGGING INFO ==="
           echo ""
-          echo "Docker status:"
+          echo "--- Docker Container Status ---"
           docker compose ps || true
+          echo ""
+          echo "--- Backend Container Logs (Last 100 lines) ---"
+          docker compose logs bcrss-backend --tail=100 || true
+          echo ""
+          echo "--- Frontend Container Logs (Last 50 lines) ---"
+          docker compose logs bcrss-frontend --tail=50 || true
+          echo ""
+          echo "--- Docker Network Status ---"
+          docker network ls || true
+          echo ""
+          echo "--- Docker Volume Status ---"
+          docker volume ls || true
