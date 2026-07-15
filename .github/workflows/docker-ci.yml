@@ -116,8 +116,8 @@ jobs:
 
       - name: Check Container Status
         run: |
-          echo "Checking if bcrss-backend container is running..."
-          if docker compose ps | grep -q "bcrss-backend.*Up"; then
+          echo "Checking if backend container is running..."
+          if docker compose ps | grep -q "backend.*Up"; then
             echo "Container is running"
           else
             echo "ERROR: Container is not running!"
@@ -126,7 +126,7 @@ jobs:
             docker compose ps
             echo ""
             echo "Backend container logs:"
-            docker compose logs bcrss-backend
+            docker compose logs backend
             exit 1
           fi
 
@@ -156,10 +156,10 @@ jobs:
           docker compose ps
           echo ""
           echo "Backend container logs:"
-          docker compose logs bcrss-backend
+          docker compose logs backend
           echo ""
           echo "Checking if container is still running:"
-          docker compose exec -T bcrss-backend echo "Container is running" || echo "Container crashed or unreachable"
+          docker compose exec -T backend echo "Container is running" || echo "Container crashed or unreachable"
           exit 1
 
       - name: Verify Container Still Running
@@ -171,24 +171,24 @@ jobs:
           curl -v http://localhost:8000/admin/login/ || echo "WARNING: Direct curl failed"
           echo ""
           echo "Attempting docker exec test..."
-          docker compose exec -T bcrss-backend echo "Container is accessible" || exit 1
+          docker compose exec -T backend echo "Container is accessible" || exit 1
 
       - name: Django System Check
         run: |
           echo "Running Django system checks..."
-          docker compose exec -T bcrss-backend python manage.py check
+          docker compose exec -T backend python manage.py check
           echo "Django system checks passed"
 
       - name: Run Database Migrations
         run: |
           echo "Running database migrations..."
-          docker compose exec -T bcrss-backend python manage.py migrate
+          docker compose exec -T backend python manage.py migrate
           echo "Migrations completed"
 
       - name: Run Tests
         run: |
           echo "Running tests..."
-          docker compose exec -T bcrss-backend python manage.py test
+          docker compose exec -T backend python manage.py test
           echo "Tests passed"
 
       - name: Cleanup
@@ -207,10 +207,10 @@ jobs:
           docker compose ps || true
           echo ""
           echo "--- Backend Container Logs (Last 100 lines) ---"
-          docker compose logs bcrss-backend --tail=100 || true
+          docker compose logs backend --tail=100 || true
           echo ""
           echo "--- Frontend Container Logs (Last 50 lines) ---"
-          docker compose logs bcrss-frontend --tail=50 || true
+          docker compose logs frontend --tail=50 || true
           echo ""
           echo "--- Docker Network Status ---"
           docker network ls || true
