@@ -11,6 +11,48 @@
 
 const BCRSS = {};
 
+// ==================== STATISTICS ====================
+
+BCRSS.STATISTICS = {
+  shared: '2,300+',
+  sharedLabel: 'Resources Shared',
+  students: '600+',
+  studentsLabel: 'Students',
+  tools: '450+',
+  toolsLabel: 'Farm Tools',
+  jobsPosted: '150+',
+  jobsPostedLabel: 'Jobs Posted'
+};
+
+// ==================== TESTIMONIALS ====================
+
+BCRSS.TESTIMONIALS = [
+  {
+    name: 'Mary Chebet',
+    initials: 'MC',
+    avatar: 'bg-teal',
+    rating: 5,
+    text: 'I lent my knapsack sprayer through BCRSS and it came back cleaned and on time. Such a wonderful way to build community trust while helping neighbors.',
+    role: 'Baraton Market Area'
+  },
+  {
+    name: 'Faith Wanjiku',
+    initials: 'FW',
+    avatar: 'bg-indigo',
+    rating: 4,
+    text: 'Borrowed a solar lantern for studying during power outages. The process was simple and the owner was very accommodating. Highly recommend!',
+    role: 'UEAB Student'
+  },
+  {
+    name: 'Joseph Kiprop',
+    initials: 'JK',
+    avatar: 'bg-cyan',
+    rating: 5,
+    text: 'Found a skilled carpenter through the job board. He repaired my furniture at an affordable rate. This platform is a game-changer for our community.',
+    role: 'Near UEAB Main Gate'
+  }
+];
+
 // ==================== MOCK DATA ====================
 
 BCRSS.INITIAL_USERS = [
@@ -21,7 +63,7 @@ BCRSS.INITIAL_USERS = [
     role: 'Admin',
     location: 'UEAB Campus',
     contact: '+254 712 345678',
-    avatarColor: 'bg-emerald-600 text-white'
+    avatarColor: 'bg-emerald'
   },
   {
     id: 'user-mary',
@@ -30,7 +72,7 @@ BCRSS.INITIAL_USERS = [
     role: 'Member',
     location: 'Baraton Market Area',
     contact: '+254 722 000111',
-    avatarColor: 'bg-blue-600 text-white'
+    avatarColor: 'bg-teal'
   },
   {
     id: 'user-faith',
@@ -39,7 +81,7 @@ BCRSS.INITIAL_USERS = [
     role: 'Member',
     location: 'UEAB Student Hostels',
     contact: '+254 733 222333',
-    avatarColor: 'bg-indigo-600 text-white'
+    avatarColor: 'bg-indigo'
   },
   {
     id: 'user-grace',
@@ -48,7 +90,7 @@ BCRSS.INITIAL_USERS = [
     role: 'Member',
     location: 'UEAB Library Area',
     contact: '+254 711 444555',
-    avatarColor: 'bg-teal-600 text-white'
+    avatarColor: 'bg-green'
   },
   {
     id: 'user-joseph',
@@ -57,7 +99,7 @@ BCRSS.INITIAL_USERS = [
     role: 'Member',
     location: 'Near UEAB Main Gate',
     contact: '+254 715 666777',
-    avatarColor: 'bg-cyan-600 text-white'
+    avatarColor: 'bg-cyan'
   },
   {
     id: 'user-daniel',
@@ -66,7 +108,7 @@ BCRSS.INITIAL_USERS = [
     role: 'Member',
     location: 'Baraton Village',
     contact: '+254 725 888999',
-    avatarColor: 'bg-orange-600 text-white'
+    avatarColor: 'bg-orange'
   },
   {
     id: 'user-elijah',
@@ -75,7 +117,7 @@ BCRSS.INITIAL_USERS = [
     role: 'Member',
     location: 'Baraton Farm Area',
     contact: '+254 701 123456',
-    avatarColor: 'bg-amber-600 text-white'
+    avatarColor: 'bg-amber'
   }
 ];
 
@@ -85,7 +127,7 @@ BCRSS.INITIAL_RESOURCES = [
     title: 'Knapsack Sprayer (16L)',
     category: 'farm tools',
     condition: 'Good',
-    description: '16-litre knapsack sprayer for pesticide and herbicide application. Comes with adjustable nozzle. Perfect for maize and vegetable farming in Baraton. Please clean after use.',
+    description: '16-litre knapsack sprayer for pesticide and herbicide application. Comes with adjustable nozzle. Perfect for maize and vegetable farming in Baraton.',
     lendingType: 'Borrowing',
     location: 'Baraton Market Area',
     ownerId: 'user-mary',
@@ -100,7 +142,7 @@ BCRSS.INITIAL_RESOURCES = [
     title: 'Solar Lantern',
     category: 'household items',
     condition: 'Good',
-    description: 'Rechargeable solar lantern with bright LED light. Extremely handy for studying during power outages or outdoor night work. Includes a small USB port for phone charging.',
+    description: 'Rechargeable solar lantern with bright LED light. Handy for studying during power outages or outdoor night work. Includes USB port for phone charging.',
     lendingType: 'Borrowing',
     location: 'UEAB Student Hostels',
     ownerId: 'user-faith',
@@ -115,7 +157,7 @@ BCRSS.INITIAL_RESOURCES = [
     title: 'Biology 101 - Campbell',
     category: 'textbooks',
     condition: 'Good',
-    description: 'Campbell Biology 11th Edition. Used for BIOL 101 at UEAB. In great condition, all pages intact. Happy to lend for the full academic semester to someone who cannot afford a new one.',
+    description: 'Campbell Biology 11th Edition. Used for BIOL 101 at UEAB. In great condition, all pages intact. Happy to lend for the full academic semester.',
     lendingType: 'Borrowing',
     location: 'UEAB Library Area',
     ownerId: 'user-grace',
@@ -130,7 +172,7 @@ BCRSS.INITIAL_RESOURCES = [
     title: 'Hand Plough (Jembe)',
     category: 'farm tools',
     condition: 'Good',
-    description: 'Heavy-duty hand plough suitable for small-scale farming. Has been well maintained and sharpened recently. Available for preparation of kitchen gardens in Baraton neighborhood.',
+    description: 'Heavy-duty hand plough suitable for small-scale farming. Well maintained and sharpened recently. Available for kitchen gardens in Baraton neighborhood.',
     lendingType: 'Borrowing',
     location: 'Near UEAB Main Gate',
     ownerId: 'user-joseph',
@@ -142,10 +184,10 @@ BCRSS.INITIAL_RESOURCES = [
   },
   {
     id: 'res-computing',
-    title: 'Introduction to Computing Textbook',
+    title: 'Introduction to Computing',
     category: 'textbooks',
     condition: 'Fair',
-    description: 'Introduction to Computer Science textbook. Covers algorithms, data structures, and programming basics. Good for INSY 101 or basic tech literacy. Lending out for students.',
+    description: 'Introduction to Computer Science textbook. Covers algorithms, data structures, and programming basics. Good for INSY 101 or basic tech literacy.',
     lendingType: 'Borrowing',
     location: 'UEAB Campus',
     ownerId: 'user-vick',
@@ -160,7 +202,7 @@ BCRSS.INITIAL_RESOURCES = [
     title: 'Wheelbarrow',
     category: 'farm tools',
     condition: 'Fair',
-    description: 'Standard construction wheelbarrow, also useful for farm work. Can carry up to 80kg. Available on weekends for local tasks and moving compost, stones or soil.',
+    description: 'Standard construction wheelbarrow, also useful for farm work. Can carry up to 80kg. Available on weekends for local tasks.',
     lendingType: 'Borrowing',
     location: 'Baraton Village',
     ownerId: 'user-daniel',
@@ -178,9 +220,9 @@ BCRSS.INITIAL_JOBS = [
     title: 'Carpenter for Furniture Repair',
     category: 'Skilled Trade',
     status: 'Open',
-    description: 'Need a skilled carpenter to repair wooden chairs and a table. Materials will be provided. Must have experience with residential furniture and own tools if possible. Work takes place near Baraton Primary School.',
+    description: 'Need a skilled carpenter to repair wooden chairs and a table. Materials will be provided. Must have experience with residential furniture and own tools.',
     location: 'Near Baraton Primary School',
-    rate: 'KSh 2,000 (negotiable)',
+    rate: 'KSh 2,000',
     duration: '1 day',
     postedBy: 'Peter Langat',
     postedById: 'user-peter',
@@ -190,10 +232,10 @@ BCRSS.INITIAL_JOBS = [
   },
   {
     id: 'job-farmhand',
-    title: 'Farm Hand Needed for Maize Harvest',
+    title: 'Farm Hand for Maize Harvest',
     category: 'Farm Work',
     status: 'Open',
-    description: 'Looking for 2-3 people to help with maize harvesting on a 2-acre plot near Baraton. Work involves cutting, stacking, and carting, expected to take about 3 days. Lunch and drinking water will be provided daily.',
+    description: 'Looking for 2-3 people to help with maize harvesting on a 2-acre plot near Baraton. Cutting, stacking, and carting. Lunch and water provided daily.',
     location: 'Baraton Farm Area',
     rate: 'KSh 500/day',
     duration: '3 days',
@@ -208,7 +250,7 @@ BCRSS.INITIAL_JOBS = [
     title: 'Math Tutor for Form 4 Student',
     category: 'Tutoring',
     status: 'Open',
-    description: 'Seeking a university student to tutor my child in Mathematics and Physics for KCSE preparation. Twice a week in the evenings (approx 2 hours per session). Candidate should be patient and have a strong academic record.',
+    description: 'Seeking a university student to tutor Mathematics and Physics for KCSE preparation. Twice a week in the evenings. Must be patient with strong academic record.',
     location: 'Baraton Residential',
     rate: 'KSh 300/hour',
     duration: 'Ongoing',
@@ -216,14 +258,14 @@ BCRSS.INITIAL_JOBS = [
     postedById: 'user-agnes',
     postedDate: '2026-06-06',
     contactInfo: '+254 714 555666',
-    requirements: ['University student with strong academic record', 'Patience and reliability']
+    requirements: ['University student', 'Strong academic record', 'Patience']
   },
   {
     id: 'job-teapicking',
     title: 'Tea Picking Helpers Wanted',
     category: 'Casual Labor',
     status: 'Open',
-    description: 'We need tea pickers for our small tea farm. Experience preferred but not required. Start early morning. Pay is based on weight harvested. High performance pickers can earn up to KSh 600 per day.',
+    description: 'Tea pickers needed for small tea farm. Experience preferred but not required. Early morning start. Pay based on weight harvested.',
     location: 'Baraton Tea Zone',
     rate: 'KSh 400/day',
     duration: '1 week',
@@ -248,7 +290,7 @@ BCRSS.INITIAL_REQUESTS = [
     endDate: '2026-06-12',
     status: 'Approved',
     requestDate: '2026-06-08',
-    message: 'Need to move organic manure to my kitchen garden this week. Thanks Daniel!'
+    message: 'Need to move organic manure to my kitchen garden. Thanks Daniel!'
   }
 ];
 
