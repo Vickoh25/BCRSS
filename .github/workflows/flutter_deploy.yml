@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - 'bcrss_mobile/**'
+  workflow_dispatch: # This must be indented 2 spaces
 
 jobs:
   build-and-deploy:
