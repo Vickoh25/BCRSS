@@ -17,7 +17,7 @@ services:
       - key: DB_NAME
         fromDatabase:
           name: bcrss-db
-          property: name
+          property: database
       - key: DB_USER
         fromDatabase:
           name: bcrss-db
