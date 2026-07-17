@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "framework": "flutter",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

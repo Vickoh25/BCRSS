@@ -6,7 +6,6 @@ on:
       - main
     paths:
       - 'bcrss_mobile/**'
-  workflow_dispatch: # This adds a manual "Run" button
 
 jobs:
   build-and-deploy:
