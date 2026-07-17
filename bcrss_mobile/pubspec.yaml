@@ -35,7 +35,10 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   google_fonts: ^6.2.1 # For Playfair Display and Inter
-
+  provider: ^6.0.0
+  http: ^1.1.0
+  shared_preferences: ^2.2.0
+  intl: ^0.19.0
 # To fetch these dependencies, run `flutter pub get` in the terminal.
 
 dev_dependencies:
