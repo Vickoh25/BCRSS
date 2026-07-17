@@ -1,0 +1,47 @@
+services:
+  - type: web
+    name: bcrss-backend
+    env: python
+    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate --noinput
+    startCommand: gunicorn bcrss_config.wsgi:application
+    envVars:
+      - key: DEBUG
+        value: "False"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: USE_MYSQL
+        value: "True"
+      - key: DB_ENGINE
+        value: django.db.backends.mysql
+      - key: DB_NAME
+        fromDatabase:
+          name: bcrss-db
+          property: name
+      - key: DB_USER
+        fromDatabase:
+          name: bcrss-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: bcrss-db
+          property: password
+      - key: DB_HOST
+        fromDatabase:
+          name: bcrss-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: bcrss-db
+          property: port
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+
+databases:
+  - name: bcrss-db
+    plan: free
+    databaseName: bcrss_db
+    user: bcrss_user
