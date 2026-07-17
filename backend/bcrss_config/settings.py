@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 from pathlib import Path
 import os
+import dj_database_url
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -86,8 +87,16 @@ WSGI_APPLICATION = 'bcrss_config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-# Database configuration - uses SQLite in development for simplicity
-if os.getenv('USE_MYSQL', 'False') == 'True':
+# Database configuration
+if os.getenv('DATABASE_URL'):
+    DATABASES = {
+        'default': dj_database_url.config(
+            default=os.getenv('DATABASE_URL'),
+            conn_max_age=600,
+            conn_health_checks=True,
+        )
+    }
+elif os.getenv('USE_MYSQL', 'False') == 'True':
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.mysql',

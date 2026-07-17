@@ -19,3 +19,6 @@ Pillow==12.2.0
 lxml==6.1.0
 python-pptx==1.0.2
 XlsxWriter==3.2.9
+
+dj-database-url==2.1.0
+psycopg2-binary==2.9.9
