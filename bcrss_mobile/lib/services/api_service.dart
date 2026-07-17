@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  final String baseUrl = 'https://api.example.com'; // Placeholder base URL
+  final String baseUrl = 'https://bcrss-backend.onrender.com/api';
 
   Future<Map<String, dynamic>> login(String email, String password) async {
     // Placeholder login implementation
