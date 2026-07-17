@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - 'bcrss_mobile/**'
+  workflow_dispatch: # This must be indented 2 spaces
 
 jobs:
   build-and-deploy:
@@ -17,7 +18,7 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.22.0'
+          flutter-version: '3.27.0'
           channel: 'stable'
 
       - name: Install dependencies
