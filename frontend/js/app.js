@@ -54,9 +54,11 @@ const APP = {
     // Step 3: Fetch from API and handle auth
     await this.loadInitialData();
 
-    // Step 4: Render
-    this.render();
+    // Step 4: Set up global events and observers
     this.bindGlobalEvents();
+
+    // Step 5: Render
+    this.render();
   },
 
   async loadInitialData() {
@@ -187,6 +189,13 @@ const APP = {
 
     // Render modals
     this.renderModals();
+
+    // Observe stat counters for animation (reuses pre-created observer)
+    if (this._counterObserver) {
+      document.querySelectorAll('.stat-number[data-count]').forEach(el => {
+        this._counterObserver.observe(el);
+      });
+    }
 
     this.saveToStorage();
   },
@@ -710,13 +719,31 @@ const APP = {
       }
     });
 
+    // Scroll-based header shrink (glassmorphism nav)
+    // Look up #app-header lazily — it's added to DOM by render()
+    let ticking = false;
+    window.addEventListener('scroll', () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const header = document.getElementById('app-header');
+          if (header) {
+            header.classList.toggle('scrolled', window.scrollY > 20);
+          }
+          ticking = false;
+        });
+        ticking = true;
+      }
+    });
+
     // Re-render when window regains focus (in case other tabs changed localStorage)
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden) {
         // Don't auto-reload to avoid flickering
       }
     });
-  }
+  },
+
+
 };
 
 // ==================== INIT ====================

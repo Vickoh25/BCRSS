@@ -84,8 +84,17 @@ The app will be available at `http://localhost:8080`
 
 ✅ Backend API — Complete  
 ✅ Frontend SPA — Complete (vanilla HTML/CSS/JS)  
+✅ Mobile App (Flutter) — Initialized with Premium 2026 UI  
 ⏳ API Integration — In progress (mock data active, API client ready)  
 ⏳ Production Deployment — Pending
+
+## Credit Usage Optimization (Mobile)
+
+To prevent credit wastage on unnecessary operations, the mobile app implements:
+- **Lazy Loading**: Uses `ListView.separated` and `ListView.builder` for efficient list rendering.
+- **Const Widgets**: Maximizes the use of `const` constructors to minimize unnecessary rebuilds.
+- **Image Optimization**: Implements a dedicated `ImageOptimizationService` to handle image resizing and compression.
+- **Theme-Based Styling**: Centralizes styling in `AppTheme` to reduce code duplication and improve maintainability.
 
 ## License
 

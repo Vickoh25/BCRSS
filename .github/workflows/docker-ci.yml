@@ -1,0 +1,219 @@
+name: BCRSS Docker CI/CD
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+
+jobs:
+  validate-secrets:
+    name: Validate Required Secrets
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Required Secrets
+        run: |
+          echo "Checking required GitHub secrets..."
+          MISSING_SECRETS=""
+
+          if [ -z "${{ secrets.SECRET_KEY }}" ]; then
+            MISSING_SECRETS="${MISSING_SECRETS}[MISSING] SECRET_KEY\n"
+          else
+            echo "[OK] SECRET_KEY is set"
+          fi
+
+          if [ -z "${{ secrets.CLOUDINARY_CLOUD_NAME }}" ]; then
+            MISSING_SECRETS="${MISSING_SECRETS}[MISSING] CLOUDINARY_CLOUD_NAME\n"
+          else
+            echo "[OK] CLOUDINARY_CLOUD_NAME is set"
+          fi
+
+          if [ -z "${{ secrets.CLOUDINARY_API_KEY }}" ]; then
+            MISSING_SECRETS="${MISSING_SECRETS}[MISSING] CLOUDINARY_API_KEY\n"
+          else
+            echo "[OK] CLOUDINARY_API_KEY is set"
+          fi
+
+          if [ -z "${{ secrets.CLOUDINARY_API_SECRET }}" ]; then
+            MISSING_SECRETS="${MISSING_SECRETS}[MISSING] CLOUDINARY_API_SECRET\n"
+          else
+            echo "[OK] CLOUDINARY_API_SECRET is set"
+          fi
+
+          if [ -z "${{ secrets.EMAIL_HOST }}" ]; then
+            MISSING_SECRETS="${MISSING_SECRETS}[MISSING] EMAIL_HOST\n"
+          else
+            echo "[OK] EMAIL_HOST is set"
+          fi
+
+          if [ -z "${{ secrets.EMAIL_HOST_USER }}" ]; then
+            MISSING_SECRETS="${MISSING_SECRETS}[MISSING] EMAIL_HOST_USER\n"
+          else
+            echo "[OK] EMAIL_HOST_USER is set"
+          fi
+
+          if [ -z "${{ secrets.EMAIL_HOST_PASSWORD }}" ]; then
+            MISSING_SECRETS="${MISSING_SECRETS}[MISSING] EMAIL_HOST_PASSWORD\n"
+          else
+            echo "[OK] EMAIL_HOST_PASSWORD is set"
+          fi
+
+          if [ -n "$MISSING_SECRETS" ]; then
+            echo ""
+            echo "ERROR: Missing required secrets. Please add them to GitHub Secrets:"
+            echo -e "$MISSING_SECRETS"
+            echo ""
+            echo "To add secrets, go to: Settings > Secrets and variables > Actions"
+            exit 1
+          fi
+
+          echo ""
+          echo "SUCCESS: All required secrets are configured!"
+
+  docker-build:
+    name: Build and Test Docker Images
+    runs-on: ubuntu-latest
+    needs: validate-secrets
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Create Backend .env File
+        run: |
+          mkdir -p backend
+          cat > backend/.env <<EOF
+          SECRET_KEY=${{ secrets.SECRET_KEY }}
+          DEBUG=False
+          USE_MYSQL=False
+          CLOUDINARY_CLOUD_NAME=${{ secrets.CLOUDINARY_CLOUD_NAME }}
+          CLOUDINARY_API_KEY=${{ secrets.CLOUDINARY_API_KEY }}
+          CLOUDINARY_API_SECRET=${{ secrets.CLOUDINARY_API_SECRET }}
+          EMAIL_HOST=${{ secrets.EMAIL_HOST }}
+          EMAIL_PORT=587
+          EMAIL_USE_TLS=True
+          EMAIL_HOST_USER=${{ secrets.EMAIL_HOST_USER }}
+          EMAIL_HOST_PASSWORD=${{ secrets.EMAIL_HOST_PASSWORD }}
+          DEFAULT_FROM_EMAIL=noreply@bcrss.com
+          EOF
+          echo ".env file created successfully"
+          echo "File contents (without secrets):"
+          grep -v "SECRET\|PASSWORD\|API" backend/.env || true
+
+      - name: Build Docker Images
+        run: |
+          echo "Building Docker images..."
+          docker compose build
+          echo "Docker images built successfully"
+
+      - name: Start Containers
+        run: |
+          echo "Starting containers..."
+          docker compose up -d
+          echo "Containers started"
+          sleep 5
+          echo "Container status after 5 seconds:"
+          docker compose ps
+
+      - name: Check Container Status
+        run: |
+          echo "Checking if backend container is running..."
+          if docker compose ps | grep -q "backend.*Up"; then
+            echo "Container is running"
+          else
+            echo "ERROR: Container is not running!"
+            echo ""
+            echo "Container status:"
+            docker compose ps
+            echo ""
+            echo "Backend container logs:"
+            docker compose logs backend
+            exit 1
+          fi
+
+      - name: Wait for Backend Health Check
+        run: |
+          echo "Waiting for backend to be ready..."
+          TIMEOUT=90
+          ELAPSED=0
+          INTERVAL=3
+
+          while [ $ELAPSED -lt $TIMEOUT ]; do
+            echo "Attempt $((ELAPSED / INTERVAL + 1)): Checking backend health ($ELAPSED/$TIMEOUT seconds)..."
+
+            if curl -s -f http://localhost:8000/admin/login/ > /dev/null 2>&1; then
+              echo "Backend is responding to requests"
+              exit 0
+            fi
+
+            echo "Backend not ready yet, waiting..."
+            sleep $INTERVAL
+            ELAPSED=$((ELAPSED + INTERVAL))
+          done
+
+          echo "ERROR: Backend health check failed after ${TIMEOUT} seconds"
+          echo ""
+          echo "Container status:"
+          docker compose ps
+          echo ""
+          echo "Backend container logs:"
+          docker compose logs backend
+          echo ""
+          echo "Checking if container is still running:"
+          docker compose exec -T backend echo "Container is running" || echo "Container crashed or unreachable"
+          exit 1
+
+      - name: Verify Container Still Running
+        run: |
+          echo "Double-checking container status before Django checks..."
+          docker compose ps
+          echo ""
+          echo "Testing direct connection to backend..."
+          curl -v http://localhost:8000/admin/login/ || echo "WARNING: Direct curl failed"
+          echo ""
+          echo "Attempting docker exec test..."
+          docker compose exec -T backend echo "Container is accessible" || exit 1
+
+      - name: Django System Check
+        run: |
+          echo "Running Django system checks..."
+          docker compose exec -T backend python manage.py check
+          echo "Django system checks passed"
+
+      - name: Run Database Migrations
+        run: |
+          echo "Running database migrations..."
+          docker compose exec -T backend python manage.py migrate
+          echo "Migrations completed"
+
+      - name: Run Tests
+        run: |
+          echo "Running tests..."
+          docker compose exec -T backend python manage.py test
+          echo "Tests passed"
+
+      - name: Cleanup
+        if: always()
+        run: |
+          echo "Shutting down containers..."
+          docker compose down -v
+          echo "Cleanup completed"
+
+      - name: Show Detailed Logs on Failure
+        if: failure()
+        run: |
+          echo "=== WORKFLOW FAILED - DEBUGGING INFO ==="
+          echo ""
+          echo "--- Docker Container Status ---"
+          docker compose ps || true
+          echo ""
+          echo "--- Backend Container Logs (Last 100 lines) ---"
+          docker compose logs backend --tail=100 || true
+          echo ""
+          echo "--- Frontend Container Logs (Last 50 lines) ---"
+          docker compose logs frontend --tail=50 || true
+          echo ""
+          echo "--- Docker Network Status ---"
+          docker network ls || true
+          echo ""
+          echo "--- Docker Volume Status ---"
+          docker volume ls || true
