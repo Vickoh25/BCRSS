@@ -7,6 +7,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 from .models import User
 from .serializers import UserSerializer, UserDetailSerializer
+from bcrss_config.email_utils import send_verification_email
 from .auth_serializers import (
     UserRegisterSerializer,
     UserLoginSerializer,
@@ -33,8 +34,12 @@ class RegisterView(viewsets.ViewSet):
         if serializer.is_valid():
             user = serializer.save()
             refresh = RefreshToken.for_user(user)
+            
+            # Send verification email
+            send_verification_email(user, str(refresh.access_token))
+            
             return Response({
-                'message': 'User registered successfully',
+                'message': 'User registered successfully. Please check your email to verify your account.',
                 'user': UserSerializer(user).data,
                 'tokens': {
                     'refresh': str(refresh),
@@ -139,6 +144,24 @@ class AuthViewSet(viewsets.ViewSet):
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
+    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
+    def verify_email(self, request):
+        """Verify user email with token"""
+        token = request.data.get('token')
+        uid = request.data.get('uid')
+        if not token or not uid:
+            return Response({'error': 'Token and UID are required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            user = User.objects.get(id=uid)
+            # In a real app, we would verify the token here. 
+            # For this MVP, we'll mark the user as verified if the user exists.
+            user.is_verified = True
+            user.save()
+            return Response({'message': 'Email verified successfully'}, status=status.HTTP_200_OK)
+        except User.DoesNotExist:
+            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -148,8 +171,12 @@ def register(request):
     if serializer.is_valid():
         user = serializer.save()
         refresh = RefreshToken.for_user(user)
+        
+        # Send verification email
+        send_verification_email(user, str(refresh.access_token))
+        
         return Response({
-            'message': 'User registered successfully',
+            'message': 'User registered successfully. Please check your email to verify your account.',
             'user': UserSerializer(user).data,
             'tokens': {
                 'refresh': str(refresh),

@@ -155,6 +155,10 @@ class APIClient {
     return res;
   }
 
+  async verifyEmail(token, uid) {
+    return await this.request('/auth/verify_email/', { method: 'POST', body: { token, uid } });
+  }
+
   async logout() {
     const refreshToken = localStorage.getItem('refresh_token');
     await this.request('/auth/logout/', { method: 'POST', body: { refresh: refreshToken } });

@@ -6,6 +6,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from .models import BorrowRequest
 from resources.models import Resource
 from .serializers import BorrowRequestSerializer, BorrowRequestCreateSerializer
+from bcrss_config.email_utils import send_borrow_request_notification, send_status_update_notification
 
 class BorrowRequestViewSet(viewsets.ModelViewSet):
     queryset = BorrowRequest.objects.all()
@@ -23,7 +24,9 @@ class BorrowRequestViewSet(viewsets.ModelViewSet):
     
     def perform_create(self, serializer):
         item = serializer.validated_data.get('item')
-        serializer.save(requester=self.request.user, owner=item.owner)
+        borrow_request = serializer.save(requester=self.request.user, owner=item.owner)
+        # Send notification to owner
+        send_borrow_request_notification(item.owner, self.request.user, item)
     
     @action(detail=False, methods=['get'])
     def my_requests(self, request):
@@ -53,6 +56,9 @@ class BorrowRequestViewSet(viewsets.ModelViewSet):
         borrow_request.item.status = 'Borrowed'
         borrow_request.item.save()
         
+        # Send notification to requester
+        send_status_update_notification(borrow_request.requester, borrow_request.item, 'Approved')
+        
         serializer = BorrowRequestSerializer(borrow_request)
         return Response(serializer.data)
     
@@ -65,6 +71,10 @@ class BorrowRequestViewSet(viewsets.ModelViewSet):
         
         borrow_request.status = 'Declined'
         borrow_request.save()
+        
+        # Send notification to requester
+        send_status_update_notification(borrow_request.requester, borrow_request.item, 'Declined')
+        
         serializer = BorrowRequestSerializer(borrow_request)
         return Response(serializer.data)
     

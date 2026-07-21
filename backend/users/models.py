@@ -8,6 +8,7 @@ class User(AbstractUser):
     )
     
     role = models.CharField(max_length=10, choices=ROLE_CHOICES, default='Member')
+    is_verified = models.BooleanField(default=False)
     location = models.CharField(max_length=255, blank=True, null=True)
     contact = models.CharField(max_length=20, blank=True, null=True)
     avatar_color = models.CharField(max_length=50, default='bg-emerald-600 text-white')
