@@ -1155,10 +1155,28 @@ function renderShareModal(state) {
           </div>
           <div class="space-y-1 text-left">
             <label class="form-label">Photos</label>
-            <div class="upload-zone">
-              ${icon('imagePlus', 'w-8 h-8 text-stone-400 mb-2')}
-              <span class="text-xs font-semibold text-stone-500">Add Photos</span>
-              <span class="text-[10px] text-stone-400 mt-1">PNG or JPEG up to 5MB (Illustrative icon fallback auto-assigned)</span>
+            <div style="display:flex;gap:var(--space-2);margin-bottom:var(--space-2)">
+              <button type="button" class="btn-secondary" style="flex:1;padding:var(--space-2);font-size:var(--fs-xs)" onclick="document.getElementById('share-image-file').click()">
+                ${icon('imagePlus', 'w-4 h-4')}<span>Upload File</span>
+              </button>
+              <button type="button" class="btn-secondary" style="flex:1;padding:var(--space-2);font-size:var(--fs-xs)" onclick="APP.startCamera()">
+                ${icon('camera', 'w-4 h-4')}<span>Take Photo</span>
+              </button>
+            </div>
+            <input type="file" id="share-image-file" accept="image/*" style="display:none" onchange="APP.handleImageSelect(event)">
+            
+            <div id="image-preview-container" class="hidden" style="margin-top:var(--space-2);position:relative">
+              <img id="share-image-preview" src="" style="width:100%;height:150px;object-fit:cover;border-radius:var(--radius-md)">
+              <button type="button" onclick="APP.removeSelectedImage()" style="position:absolute;top:5px;right:5px;background:rgba(0,0,0,0.5);color:white;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;border:none">
+                ${icon('x', 'w-4 h-4')}
+              </button>
+            </div>
+            
+            <div id="camera-container" class="hidden" style="margin-top:var(--space-2)">
+              <video id="camera-video" autoplay playsinline style="width:100%;border-radius:var(--radius-md);background:#000"></video>
+              <button type="button" class="btn-primary" style="width:100%;margin-top:var(--space-2);padding:var(--space-2)" onclick="APP.capturePhoto()">
+                Capture Photo
+              </button>
             </div>
           </div>
           <div class="modal-footer">
