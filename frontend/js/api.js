@@ -57,6 +57,7 @@ class APIClient {
       ownerContact: r.owner ? r.owner.contact : '',
       listedDate: r.listed_date || r.created_at,
       imageCode: r.image_code || 'generic',
+      imageUrl: r.image_url,
       lendingType: r.lending_type
     };
   }

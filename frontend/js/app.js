@@ -365,6 +365,7 @@ const APP = {
   openModal(type) {
     this.state.activeModal = type;
     this.state.userDropdownOpen = false;
+    this.state.selectedImage = null; // Reset image on modal open
     this.render();
   },
 
@@ -372,7 +373,80 @@ const APP = {
     this.state.activeModal = null;
     this.state.borrowItemTarget = null;
     this.state.applyJobTarget = null;
+    this.state.selectedImage = null;
+    if (this.state.cameraStream) {
+      this.state.cameraStream.getTracks().forEach(track => track.stop());
+      this.state.cameraStream = null;
+    }
     this.render();
+  },
+
+  handleImageSelect(e) {
+    const file = e.target.files[0];
+    if (file) {
+      this.previewImage(file);
+    }
+  },
+
+  previewImage(file) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      this.state.selectedImage = e.target.result;
+      const preview = document.getElementById('share-image-preview');
+      const container = document.getElementById('image-preview-container');
+      if (preview && container) {
+        preview.src = e.target.result;
+        container.classList.remove('hidden');
+      }
+    };
+    reader.readAsDataURL(file);
+  },
+
+  async startCamera() {
+    const container = document.getElementById('camera-container');
+    const video = document.getElementById('camera-video');
+    if (!container || !video) return;
+
+    try {
+      this.state.cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      video.srcObject = this.state.cameraStream;
+      container.classList.remove('hidden');
+    } catch (err) {
+      alert('Could not access camera: ' + err.message);
+    }
+  },
+
+  capturePhoto() {
+    const video = document.getElementById('camera-video');
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0);
+    
+    this.state.selectedImage = canvas.toDataURL('image/jpeg');
+    
+    // Stop camera
+    if (this.state.cameraStream) {
+      this.state.cameraStream.getTracks().forEach(track => track.stop());
+      this.state.cameraStream = null;
+    }
+    
+    document.getElementById('camera-container').classList.add('hidden');
+    const preview = document.getElementById('share-image-preview');
+    const container = document.getElementById('image-preview-container');
+    if (preview && container) {
+      preview.src = this.state.selectedImage;
+      container.classList.remove('hidden');
+    }
+  },
+
+  removeSelectedImage() {
+    this.state.selectedImage = null;
+    const container = document.getElementById('image-preview-container');
+    if (container) container.classList.add('hidden');
+    const fileInput = document.getElementById('share-image-file');
+    if (fileInput) fileInput.value = '';
   },
 
   openBorrowModal(itemId) {
@@ -406,7 +480,8 @@ const APP = {
       description: document.getElementById('share-description').value.trim(),
       lending_type: document.getElementById('share-lending-type').value,
       location: document.getElementById('share-location').value.trim(),
-      status: 'Available'
+      status: 'Available',
+      image_url: this.state.selectedImage // Include the base64 image
     };
 
     // Determine image code based on title keywords
@@ -421,12 +496,20 @@ const APP = {
     data.image_code = imageCode;
 
     try {
+      const btn = e.target.querySelector('button[type="submit"]');
+      const originalText = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '<span>Sharing...</span>';
+
       await apiClient.createResource(data);
       this.state.activeModal = null;
       alert(`Fantastic! "${data.title}" has been successfully shared on the listing page!`);
       this.init();
     } catch (err) {
-      alert('Failed to share resource. Please try again.');
+      alert('Failed to share resource: ' + (err.message || 'Please try again.'));
+      const btn = e.target.querySelector('button[type="submit"]');
+      btn.disabled = false;
+      btn.innerHTML = originalText;
     }
   },
 

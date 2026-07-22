@@ -9,6 +9,7 @@ class Resource(models.Model):
     )
     
     CONDITION_CHOICES = (
+        ('New', 'New'),
         ('Excellent', 'Excellent'),
         ('Good', 'Good'),
         ('Fair', 'Fair'),
@@ -17,6 +18,7 @@ class Resource(models.Model):
     LENDING_TYPE_CHOICES = (
         ('Borrowing', 'Borrowing'),
         ('Donation', 'Donation'),
+        ('Donating', 'Donating'),
     )
     
     STATUS_CHOICES = (
@@ -44,6 +46,7 @@ class Resource(models.Model):
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='resources')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Available')
     image_code = models.CharField(max_length=20, choices=IMAGE_CODE_CHOICES, default='generic')
+    image_url = models.URLField(max_length=500, blank=True, null=True)
     listed_date = models.DateField(auto_now_add=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
