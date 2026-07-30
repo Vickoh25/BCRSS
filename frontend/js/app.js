@@ -206,13 +206,29 @@ const APP = {
     const s = this.state;
 
     if (s.activeModal === 'share') {
-      container.innerHTML = renderShareModal(s);
+      if (!s.currentUser) {
+        container.innerHTML = renderLoginModal(s);
+      } else {
+        container.innerHTML = renderShareModal(s);
+      }
     } else if (s.activeModal === 'postJob') {
-      container.innerHTML = renderPostJobModal(s);
+      if (!s.currentUser) {
+        container.innerHTML = renderLoginModal(s);
+      } else {
+        container.innerHTML = renderPostJobModal(s);
+      }
     } else if (s.activeModal === 'borrow' && s.borrowItemTarget) {
-      container.innerHTML = renderBorrowModal(s);
+      if (!s.currentUser) {
+        container.innerHTML = renderLoginModal(s);
+      } else {
+        container.innerHTML = renderBorrowModal(s);
+      }
     } else if (s.activeModal === 'apply' && s.applyJobTarget) {
-      container.innerHTML = renderApplyModal(s);
+      if (!s.currentUser) {
+        container.innerHTML = renderLoginModal(s);
+      } else {
+        container.innerHTML = renderApplyModal(s);
+      }
     } else if (s.activeModal === 'login') {
       container.innerHTML = renderLoginModal(s);
     } else if (s.activeModal === 'register') {
@@ -224,10 +240,14 @@ const APP = {
 
   // ==================== NAVIGATION ====================
   changeTab(tab) {
+    // Block unauthenticated users from accessing dashboard
+    if (tab === 'dashboard' && !this.state.currentUser) {
+      this.openModal('login');
+      return;
+    }
     // Block non-admins from accessing admin page
     if (tab === 'admin' && (!this.state.currentUser || this.state.currentUser.role !== 'Admin')) {
-      this.state.currentTab = 'home';
-      this.render();
+      this.openModal('login');
       return;
     }
     this.state.currentTab = tab;
@@ -376,6 +396,10 @@ const APP = {
   },
 
   openBorrowModal(itemId) {
+    if (!this.state.currentUser) {
+      this.openModal('login');
+      return;
+    }
     const item = this.state.resources.find(r => r.id === itemId);
     if (item) {
       this.state.borrowItemTarget = item;
@@ -385,6 +409,10 @@ const APP = {
   },
 
   openApplyModal(jobId) {
+    if (!this.state.currentUser) {
+      this.openModal('login');
+      return;
+    }
     const job = this.state.jobs.find(j => j.id === jobId);
     if (job) {
       this.state.applyJobTarget = job;

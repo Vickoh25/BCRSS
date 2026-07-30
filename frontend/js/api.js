@@ -3,7 +3,8 @@
  * Handles all HTTP requests to the Django REST API
  */
 
-const API_BASE_URL = '/api';
+// Update this to your deployed Render URL
+const API_BASE_URL = 'https://bcrss-backend.onrender.com/api';
 
 class APIClient {
   constructor(baseURL = API_BASE_URL) {
