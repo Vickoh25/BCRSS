@@ -6,7 +6,6 @@
 // ==================== SVG ICONS (Lucide style) ====================
 const Icons = {
   handshake: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon"><path d="M11 17a1 1 0 0 1-1 1H5l-2-4V6l2-2h4l2 2"/><path d="M13 6l2-2h4l2 4v8l-2 2h-4"/><path d="M11 12a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"/><path d="m11 2-2 2v16l2 2"/><path d="M19 10v.5a2.5 2.5 0 0 1-5 0V10"/></svg>',
-  heart: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>',
   menu: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>',
   x: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>',
   plus: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon"><path d="M5 12h14"/><path d="M12 5v14"/></svg>',
@@ -256,7 +255,7 @@ function renderHomePage(state) {
         <div class="hero-grid">
           <div style="display:flex;flex-direction:column;gap:var(--space-6)">
             <div class="hero-badge">
-              ${icon('heart', 'w-3.5 h-3.5')}
+              ${icon('handshake', 'w-3.5 h-3.5')}
               <span class="hero-badge-text">Baraton Community</span>
             </div>
             <h1 class="hero-title">Share Resources,<br><span class="hero-title-highlight">Strengthen Community</span></h1>
@@ -1327,7 +1326,7 @@ function renderRegisterModal(state) {
     <form onsubmit="APP.handleRegister(event)">
       <div style="display:flex;flex-direction:column;gap:var(--space-4)">
         <div style="text-align:center;margin-bottom:var(--space-1)">
-          <div style="width:56px;height:56px;border-radius:50%;background:var(--color-primary-light);display:flex;align-items:center;justify-content:center;margin:0 auto var(--space-3)">${icon('heart', 'w-6 h-6 text-primary')}</div>
+          <div style="width:56px;height:56px;border-radius:50%;background:var(--color-primary-light);display:flex;align-items:center;justify-content:center;margin:0 auto var(--space-3)">${icon('users', 'w-6 h-6 text-primary')}</div>
           <h3 style="font-family:var(--font-serif);font-size:var(--fs-xl);font-weight:700;color:var(--color-text)">Join BCRSS</h3>
           <p style="font-size:var(--fs-sm);color:var(--color-text-tertiary);margin-top:var(--space-1)">Join the Baraton community sharing platform</p>
         </div>
