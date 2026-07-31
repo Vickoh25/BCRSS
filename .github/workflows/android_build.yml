@@ -1,0 +1,45 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+          
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.5'
+          channel: 'stable'
+          
+      - name: Force Compatibility Patch
+        run: |
+          # Fix the Groovy XML errors in the Flutter SDK
+          sed -i 's/import groovy.xml.QName//g' $FLUTTER_ROOT/packages/flutter_tools/gradle/src/main/groovy/flutter.groovy
+          sed -i '1i import groovy.xml.XmlParser' $FLUTTER_ROOT/packages/flutter_tools/gradle/src/main/groovy/flutter.groovy
+          sed -i '1i import javax.xml.namespace.QName' $FLUTTER_ROOT/packages/flutter_tools/gradle/src/main/groovy/flutter.groovy
+          
+          # Fix ProGuard in the Flutter SDK
+          find $FLUTTER_ROOT/packages/flutter_tools/gradle/ -name "*.groovy" -exec sed -i "s/proguard-android.txt/proguard-android-optimize.txt/g" {} +
+          find $FLUTTER_ROOT/packages/flutter_tools/gradle/ -name "*.kts" -exec sed -i "s/proguard-android.txt/proguard-android-optimize.txt/g" {} +
+          
+      - name: Build APK
+        run: |
+          cd bcrss_mobile
+          flutter pub get
+          flutter build apk --release --no-tree-shake-icons
+          
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: bcrss-app-release
+          path: bcrss_mobile/build/app/outputs/flutter-apk/app-release.apk
