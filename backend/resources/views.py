@@ -1,7 +1,7 @@
 from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from django_filters.rest_framework import DjangoFilterBackend
 from .models import Resource
 from .serializers import ResourceSerializer, ResourceCreateSerializer
@@ -29,6 +29,27 @@ class ResourceViewSet(viewsets.ModelViewSet):
     
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
+
+    def _can_manage(self, request, resource):
+        return resource.owner == request.user or request.user.is_admin()
+
+    def update(self, request, *args, **kwargs):
+        resource = self.get_object()
+        if not self._can_manage(request, resource):
+            return Response({'detail': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+        return super().update(request, *args, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        resource = self.get_object()
+        if not self._can_manage(request, resource):
+            return Response({'detail': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+        return super().partial_update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        resource = self.get_object()
+        if not self._can_manage(request, resource):
+            return Response({'detail': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+        return super().destroy(request, *args, **kwargs)
     
     @action(detail=False, methods=['get'])
     def my_resources(self, request):
@@ -41,6 +62,8 @@ class ResourceViewSet(viewsets.ModelViewSet):
     def mark_borrowed(self, request, pk=None):
         """Mark resource as borrowed"""
         resource = self.get_object()
+        if not self._can_manage(request, resource):
+            return Response({'detail': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
         resource.status = 'Borrowed'
         resource.save()
         serializer = ResourceSerializer(resource)
@@ -50,6 +73,8 @@ class ResourceViewSet(viewsets.ModelViewSet):
     def mark_available(self, request, pk=None):
         """Mark resource as available"""
         resource = self.get_object()
+        if not self._can_manage(request, resource):
+            return Response({'detail': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
         resource.status = 'Available'
         resource.save()
         serializer = ResourceSerializer(resource)
@@ -59,7 +84,7 @@ class ResourceViewSet(viewsets.ModelViewSet):
     def delete_resource(self, request, pk=None):
         """Delete resource (only by owner or admin)"""
         resource = self.get_object()
-        if resource.owner != request.user and not request.user.is_admin():
+        if not self._can_manage(request, resource):
             return Response({'detail': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
         resource.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)

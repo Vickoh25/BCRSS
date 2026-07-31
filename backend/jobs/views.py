@@ -1,7 +1,7 @@
 from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from django_filters.rest_framework import DjangoFilterBackend
 from .models import JobOpportunity
 from .serializers import JobOpportunitySerializer, JobOpportunityCreateSerializer
@@ -29,6 +29,27 @@ class JobOpportunityViewSet(viewsets.ModelViewSet):
     
     def perform_create(self, serializer):
         serializer.save(posted_by=self.request.user)
+
+    def _can_manage(self, request, job):
+        return job.posted_by == request.user or request.user.is_admin()
+
+    def update(self, request, *args, **kwargs):
+        job = self.get_object()
+        if not self._can_manage(request, job):
+            return Response({'detail': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+        return super().update(request, *args, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        job = self.get_object()
+        if not self._can_manage(request, job):
+            return Response({'detail': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+        return super().partial_update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        job = self.get_object()
+        if not self._can_manage(request, job):
+            return Response({'detail': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+        return super().destroy(request, *args, **kwargs)
     
     @action(detail=False, methods=['get'])
     def my_jobs(self, request):
@@ -41,6 +62,8 @@ class JobOpportunityViewSet(viewsets.ModelViewSet):
     def mark_filled(self, request, pk=None):
         """Mark job as filled"""
         job = self.get_object()
+        if not self._can_manage(request, job):
+            return Response({'detail': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
         job.status = 'Filled'
         job.save()
         serializer = JobOpportunitySerializer(job)
@@ -50,6 +73,8 @@ class JobOpportunityViewSet(viewsets.ModelViewSet):
     def mark_open(self, request, pk=None):
         """Mark job as open"""
         job = self.get_object()
+        if not self._can_manage(request, job):
+            return Response({'detail': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
         job.status = 'Open'
         job.save()
         serializer = JobOpportunitySerializer(job)
@@ -59,7 +84,7 @@ class JobOpportunityViewSet(viewsets.ModelViewSet):
     def delete_job(self, request, pk=None):
         """Delete job (only by poster or admin)"""
         job = self.get_object()
-        if job.posted_by != request.user and not request.user.is_admin():
+        if not self._can_manage(request, job):
             return Response({'detail': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
         job.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)

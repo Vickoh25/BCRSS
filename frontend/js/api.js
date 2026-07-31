@@ -3,8 +3,15 @@
  * Handles all HTTP requests to the Django REST API
  */
 
-// Update this to your deployed Render URL
-const API_BASE_URL = 'https://bcrss-backend.onrender.com/api';
+const DEFAULT_REMOTE_API_BASE_URL = 'https://bcrss-backend.onrender.com/api';
+const API_BASE_URL = (() => {
+  if (window.BCRSS_API_BASE_URL) return window.BCRSS_API_BASE_URL;
+
+  const { hostname, origin } = window.location;
+  const isLocalHost = hostname === 'localhost' || hostname === '127.0.0.1';
+
+  return isLocalHost ? `${origin}/api` : DEFAULT_REMOTE_API_BASE_URL;
+})();
 
 class APIClient {
   constructor(baseURL = API_BASE_URL) {

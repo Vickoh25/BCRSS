@@ -1,7 +1,8 @@
 from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework.permissions import IsAuthenticated
+from django.db.models import Q
 from django_filters.rest_framework import DjangoFilterBackend
 from .models import BorrowRequest
 from resources.models import Resource
@@ -15,6 +16,12 @@ class BorrowRequestViewSet(viewsets.ModelViewSet):
     filterset_fields = ['status', 'item']
     ordering_fields = ['created_at', 'start_date']
     ordering = ['-created_at']
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_authenticated and user.is_admin():
+            return BorrowRequest.objects.all()
+        return BorrowRequest.objects.filter(Q(requester=user) | Q(owner=user))
     
     def get_serializer_class(self):
         if self.action in ['create', 'update', 'partial_update']:
@@ -24,6 +31,24 @@ class BorrowRequestViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         item = serializer.validated_data.get('item')
         serializer.save(requester=self.request.user, owner=item.owner)
+
+    def update(self, request, *args, **kwargs):
+        borrow_request = self.get_object()
+        if borrow_request.requester != request.user and not request.user.is_admin():
+            return Response({'detail': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+        return super().update(request, *args, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        borrow_request = self.get_object()
+        if borrow_request.requester != request.user and not request.user.is_admin():
+            return Response({'detail': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+        return super().partial_update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        borrow_request = self.get_object()
+        if borrow_request.requester != request.user and borrow_request.owner != request.user and not request.user.is_admin():
+            return Response({'detail': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+        return super().destroy(request, *args, **kwargs)
     
     @action(detail=False, methods=['get'])
     def my_requests(self, request):
@@ -43,7 +68,7 @@ class BorrowRequestViewSet(viewsets.ModelViewSet):
     def approve(self, request, pk=None):
         """Approve a borrow request"""
         borrow_request = self.get_object()
-        if borrow_request.owner != request.user:
+        if borrow_request.owner != request.user and not request.user.is_admin():
             return Response({'detail': 'Only the owner can approve'}, status=status.HTTP_403_FORBIDDEN)
         
         borrow_request.status = 'Approved'
@@ -60,7 +85,7 @@ class BorrowRequestViewSet(viewsets.ModelViewSet):
     def decline(self, request, pk=None):
         """Decline a borrow request"""
         borrow_request = self.get_object()
-        if borrow_request.owner != request.user:
+        if borrow_request.owner != request.user and not request.user.is_admin():
             return Response({'detail': 'Only the owner can decline'}, status=status.HTTP_403_FORBIDDEN)
         
         borrow_request.status = 'Declined'
@@ -72,7 +97,7 @@ class BorrowRequestViewSet(viewsets.ModelViewSet):
     def mark_returned(self, request, pk=None):
         """Mark item as returned"""
         borrow_request = self.get_object()
-        if borrow_request.owner != request.user:
+        if borrow_request.owner != request.user and not request.user.is_admin():
             return Response({'detail': 'Only the owner can mark as returned'}, status=status.HTTP_403_FORBIDDEN)
         
         borrow_request.status = 'Returned'

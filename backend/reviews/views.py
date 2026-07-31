@@ -1,7 +1,7 @@
 from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
 from .models import Review
 from .serializers import ReviewSerializer, ReviewCreateSerializer
@@ -22,6 +22,27 @@ class ReviewViewSet(viewsets.ModelViewSet):
     
     def perform_create(self, serializer):
         serializer.save(reviewer=self.request.user)
+
+    def _can_manage(self, request, review):
+        return review.reviewer == request.user or request.user.is_admin()
+
+    def update(self, request, *args, **kwargs):
+        review = self.get_object()
+        if not self._can_manage(request, review):
+            return Response({'detail': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+        return super().update(request, *args, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        review = self.get_object()
+        if not self._can_manage(request, review):
+            return Response({'detail': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+        return super().partial_update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        review = self.get_object()
+        if not self._can_manage(request, review):
+            return Response({'detail': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+        return super().destroy(request, *args, **kwargs)
     
     @action(detail=False, methods=['get'])
     def my_reviews(self, request):
@@ -58,7 +79,7 @@ class ReviewViewSet(viewsets.ModelViewSet):
     def delete_review(self, request, pk=None):
         """Delete review (only by reviewer or admin)"""
         review = self.get_object()
-        if review.reviewer != request.user and not request.user.is_admin():
+        if not self._can_manage(request, review):
             return Response({'detail': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
         review.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
