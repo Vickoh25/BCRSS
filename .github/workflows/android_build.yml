@@ -22,14 +22,23 @@ jobs:
           
       - name: Force Compatibility Patch
         run: |
-          # Fix the Groovy XML errors in the Flutter SDK
-          sed -i 's/import groovy.xml.QName//g' $FLUTTER_ROOT/packages/flutter_tools/gradle/src/main/groovy/flutter.groovy
-          sed -i '1i import groovy.xml.XmlParser' $FLUTTER_ROOT/packages/flutter_tools/gradle/src/main/groovy/flutter.groovy
-          sed -i '1i import javax.xml.namespace.QName' $FLUTTER_ROOT/packages/flutter_tools/gradle/src/main/groovy/flutter.groovy
+          FLUTTER_GRADLE_DIR="$FLUTTER_ROOT/packages/flutter_tools/gradle"
+          FLUTTER_GROOVY="$FLUTTER_GRADLE_DIR/src/main/groovy/flutter.groovy"
+
+          # Older Flutter SDKs used this file; newer SDKs removed it.
+          if [ -f "$FLUTTER_GROOVY" ]; then
+            sed -i 's/import groovy.xml.QName//g' "$FLUTTER_GROOVY"
+            sed -i '1i import groovy.xml.XmlParser' "$FLUTTER_GROOVY"
+            sed -i '1i import javax.xml.namespace.QName' "$FLUTTER_GROOVY"
+          else
+            echo "Skipping Groovy XML patch; $FLUTTER_GROOVY was not found."
+          fi
           
-          # Fix ProGuard in the Flutter SDK
-          find $FLUTTER_ROOT/packages/flutter_tools/gradle/ -name "*.groovy" -exec sed -i "s/proguard-android.txt/proguard-android-optimize.txt/g" {} +
-          find $FLUTTER_ROOT/packages/flutter_tools/gradle/ -name "*.kts" -exec sed -i "s/proguard-android.txt/proguard-android-optimize.txt/g" {} +
+          # Fix ProGuard in SDK files when those files exist.
+          if [ -d "$FLUTTER_GRADLE_DIR" ]; then
+            find "$FLUTTER_GRADLE_DIR" -name "*.groovy" -exec sed -i "s/proguard-android.txt/proguard-android-optimize.txt/g" {} +
+            find "$FLUTTER_GRADLE_DIR" -name "*.kts" -exec sed -i "s/proguard-android.txt/proguard-android-optimize.txt/g" {} +
+          fi
           
       - name: Build APK
         run: |
