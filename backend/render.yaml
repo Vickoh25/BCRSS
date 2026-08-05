@@ -9,10 +9,10 @@ services:
         value: "False"
       - key: SECRET_KEY
         generateValue: true
-      - key: USE_MYSQL
+      - key: USE_POSTGRES
         value: "True"
       - key: DB_ENGINE
-        value: django.db.backends.mysql
+        value: django.db.backends.postgresql
       - key: DB_NAME
         fromDatabase:
           name: bcrss-db
