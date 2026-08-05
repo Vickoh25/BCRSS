@@ -162,7 +162,8 @@ const APP = {
     // Main Content
     html += '<main class="flex-1">';
     if (s.currentTab === 'home') {
-      html += renderHomePage(s);
+      // Show landing page for unauthenticated users, homepage for authenticated users
+      html += s.currentUser ? renderHomePage(s) : renderLandingPage(s);
     } else if (s.currentTab === 'resources') {
       html += renderResourcesPage(s);
     } else if (s.currentTab === 'jobs') {

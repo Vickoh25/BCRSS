@@ -239,79 +239,115 @@ function renderHomePage(state) {
   const { resources, jobs, currentUser } = state;
   const latestResources = resources.slice(0, 4);
   const openOpportunities = jobs.filter(j => j.status === 'Open').slice(0, 4);
-  const stats = BCRSS.STATISTICS || {
-    shared: '2,300+', sharedLabel: 'Resources Shared',
-    students: '600+', studentsLabel: 'Students',
-    tools: '450+', toolsLabel: 'Farm Tools',
-    jobsPosted: '150+', jobsPostedLabel: 'Jobs Posted'
-  };
-  const testimonials = BCRSS.TESTIMONIALS || [];
+  
+  // Authenticated Dashboard-style Home
+  return `<div class="min-h-screen py-10">
+    <div class="container">
+      <!-- Welcome Header -->
+      <div class="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-6">
+        <div>
+          <h1 class="font-serif text-4xl font-bold text-dark tracking-tight">Welcome back, ${currentUser ? currentUser.name.split(' ')[0] : 'Member'}!</h1>
+          <p class="text-secondary mt-2">Here's what's happening in the Baraton community today.</p>
+        </div>
+        <div class="flex gap-3">
+          <button class="btn btn-primary" onclick="APP.openModal('share')">
+            ${icon('plus', 'w-4 h-4')}<span>Share Resource</span>
+          </button>
+          <button class="btn btn-outline" onclick="APP.changeTab('dashboard')">
+            <span>My Dashboard</span>
+          </button>
+        </div>
+      </div>
 
-  return `<div class="min-h-screen">
-
-    <!-- 1. HERO -->
-    <section class="hero-section">
-      <div class="container">
-        <div class="hero-grid">
-          <div style="display:flex;flex-direction:column;gap:var(--space-6)">
-            <div class="hero-badge">
-              ${icon('handshake', 'w-3.5 h-3.5')}
-              <span class="hero-badge-text">Baraton Community</span>
-            </div>
-            <h1 class="hero-title">Share Resources,<br><span class="hero-title-highlight">Strengthen Community</span></h1>
-            <p class="hero-desc">A platform for the Baraton community to share farm tools, textbooks, and discover opportunities — right in your neighborhood.</p>
-            <div style="display:flex;flex-wrap:wrap;gap:var(--space-3);padding-top:var(--space-2)">
-              <button class="btn btn-primary btn-lg" onclick="APP.changeTab('resources')">
-                <span>Browse Resources</span>${icon('arrowRight', 'w-4 h-4')}
-              </button>
-              <button class="btn btn-secondary btn-lg" onclick="APP.openModal('share')">
-                <span>Share Something</span>
-              </button>
-            </div>
+      <!-- Quick Stats / Actions Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+        <div class="home-action-card" onclick="APP.changeTab('resources')">
+          <div class="home-action-icon bg-primary-light text-primary">${icon('shovel', 'w-6 h-6')}</div>
+          <div class="flex-1">
+            <h3 class="font-bold text-lg mb-1">Borrow Tools</h3>
+            <p class="text-sm text-tertiary">Find sprayers, ploughs, and more.</p>
           </div>
-          <div class="hero-visual">
-            <div class="hero-visual-glow"></div>
-            <div class="hero-card" style="transform:rotate(-4deg) translateX(-20px) translateY(-10px);left:5%;top:5%">
-              ${renderItemImage('biology', 'textbooks', 'h-28 w-52 rounded-lg mb-2')}
-              <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#8c6239">Textbook</div>
-              <div style="font-size:var(--fs-sm);font-weight:700;color:var(--color-text)">Campbell Biology</div>
-            </div>
-            <div class="hero-card" style="transform:rotate(3deg) translateX(30px) translateY(40px);right:5%;top:15%;z-index:10">
-              ${renderItemImage('sprayer', 'farm tools', 'h-28 w-52 rounded-lg mb-2')}
-              <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--color-primary)">Farm Equipment</div>
-              <div style="font-size:var(--fs-sm);font-weight:700;color:var(--color-text)">Knapsack Sprayer</div>
-            </div>
-            <div class="hero-card" style="transform:rotate(-2deg) translateX(-10px) translateY(80px);left:10%;bottom:5%;z-index:5">
-              <div style="display:flex;align-items:center;gap:var(--space-3);padding:var(--space-2)">
-                <div class="avatar bg-amber" style="width:40px;height:40px">EK</div>
-                <div>
-                  <div style="font-weight:600;font-size:var(--fs-sm);color:var(--color-text)">Eliud Kipchoge</div>
-                  <div style="display:flex;align-items:center;gap:2px;margin-top:2px">
-                    <span class="star filled" style="font-size:12px">★</span>
-                    <span class="star filled" style="font-size:12px">★</span>
-                    <span class="star filled" style="font-size:12px">★</span>
-                    <span class="star filled" style="font-size:12px">★</span>
-                    <span class="star filled" style="font-size:12px">★</span>
-                    <span style="font-size:11px;color:var(--color-text-tertiary);margin-left:4px">5.0</span>
+          <div class="text-primary">${icon('chevronRight', 'w-5 h-5')}</div>
+        </div>
+        <div class="home-action-card" onclick="APP.changeTab('resources')">
+          <div class="home-action-icon" style="background:#f9f5eb;color:#8c6239">${icon('book', 'w-6 h-6')}</div>
+          <div class="flex-1">
+            <h3 class="font-bold text-lg mb-1">Textbooks</h3>
+            <p class="text-sm text-tertiary">Browse academic books shared by peers.</p>
+          </div>
+          <div class="text-primary">${icon('chevronRight', 'w-5 h-5')}</div>
+        </div>
+        <div class="home-action-card" onclick="APP.changeTab('jobs')">
+          <div class="home-action-icon" style="background:rgba(79, 70, 229, 0.1);color:#4f46e5">${icon('briefcase', 'w-6 h-6')}</div>
+          <div class="flex-1">
+            <h3 class="font-bold text-lg mb-1">Local Gigs</h3>
+            <p class="text-sm text-tertiary">Discover farm work and casual labor.</p>
+          </div>
+          <div class="text-primary">${icon('chevronRight', 'w-5 h-5')}</div>
+        </div>
+      </div>
+
+      <!-- Main Feed Layout -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-10">
+        <!-- Left: Activity & Resources -->
+        <div class="lg:col-span-8">
+          <div class="flex items-center justify-between mb-6">
+            <h2 class="font-serif text-2xl font-bold text-dark">Recently Shared</h2>
+            <button class="btn btn-ghost btn-sm" onclick="APP.changeTab('resources')">
+              <span>View All</span>${icon('arrowRight', 'w-4 h-4')}
+            </button>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            ${latestResources.length > 0
+              ? latestResources.map(item => renderResourceCard(item, currentUser)).join('')
+              : '<div class="empty-state p-10 col-span-2">No resources available yet.</div>'
+            }
+          </div>
+        </div>
+
+        <!-- Right: Sidebar Opportunities -->
+        <div class="lg:col-span-4">
+          <div class="flex items-center justify-between mb-6">
+            <h2 class="font-serif text-2xl font-bold text-dark">Opportunities</h2>
+            <button class="btn btn-ghost btn-sm" onclick="APP.changeTab('jobs')">
+              <span>More</span>${icon('arrowRight', 'w-4 h-4')}
+            </button>
+          </div>
+          <div class="flex flex-col gap-4">
+            ${openOpportunities.length > 0
+              ? openOpportunities.map(job => `
+                <div class="home-sidebar-job" onclick="APP.changeTab('jobs')">
+                  <div class="flex justify-between items-start mb-2">
+                    <span class="text-xs font-bold uppercase tracking-wider text-tertiary">${job.category}</span>
+                    <span class="text-xs font-semibold text-primary">${job.rate}</span>
+                  </div>
+                  <h4 class="font-bold text-dark mb-1 line-clamp-1">${job.title}</h4>
+                  <div class="flex items-center gap-2 text-xs text-tertiary">
+                    ${icon('mapPin', 'w-3 h-3')}<span>${job.location}</span>
                   </div>
                 </div>
-              </div>
-            </div>
-            <div class="hero-card" style="transform:rotate(1deg) translateX(20px) translateY(60px);right:8%;bottom:8%;z-index:8">
-              <div style="display:flex;align-items:center;gap:var(--space-3);padding:var(--space-2)">
-                <div style="padding:var(--space-2);border-radius:var(--radius-md);background:var(--color-primary-light)">
-                  ${icon('briefcase', 'w-5 h-5 text-primary')}
-                </div>
-                <div>
-                  <div style="font-weight:600;font-size:var(--fs-sm);color:var(--color-text)">Farm Hand Needed</div>
-                  <div style="font-size:11px;color:var(--color-text-secondary)">Maize Harvest • KSh 500/day</div>
-                </div>
-              </div>
-            </div>
+              `).join('')
+              : '<div class="empty-state p-6">No open jobs nearby.</div>'
+            }
+          </div>
+
+          <!-- Community Tip -->
+          <div class="mt-8 p-6 rounded-xl bg-primary-light border-2 border-primary border-opacity-20">
+            <h4 class="font-bold text-primary mb-2 flex items-center gap-2">
+              ${icon('info', 'w-4 h-4')} Community Tip
+            </h4>
+            <p class="text-sm text-secondary leading-relaxed">
+              Always inspect borrowed tools before and after use. Building trust through careful handling keeps the community strong!
+            </p>
           </div>
         </div>
       </div>
-    </section>
+    </div>
+  </div>`;
+}
+
+// OLD HOME PAGE CONTENT (Kept for reference or if unauthenticated landing needs a fallback)
+function renderOldHomePage(state) {
 
     <!-- 2. COMMUNITY STATISTICS -->
     <section class="stats-section" style="background:var(--color-primary-light);border-top:1px solid var(--color-border-light);border-bottom:1px solid var(--color-border-light)">
@@ -513,6 +549,256 @@ function renderHomePage(state) {
               <li><a href="#" onclick="event.preventDefault();APP.openModal('share')">Share Resource</a></li>
               <li><a href="#" onclick="event.preventDefault();APP.openModal('postJob')">Post a Job</a></li>
               <li><a href="#" onclick="event.preventDefault();APP.openModal('register')">Join</a></li>
+            </ul>
+          </div>
+          <div>
+            <div class="footer-heading">Contact</div>
+            <ul class="footer-links">
+              <li><a href="#">UEAB, Nandi County</a></li>
+              <li><a href="#">bcrss@baraton.ac.ke</a></li>
+              <li><a href="#">+254 712 345678</a></li>
+            </ul>
+          </div>
+        </div>
+        <div class="footer-bottom">
+          <div>&copy; 2026 BCRSS — Baraton Community Resource Sharing System. All rights reserved.</div>
+          <div style="display:flex;gap:var(--space-4)">
+            <a href="#" style="color:var(--neutral-500);text-decoration:none;font-size:var(--fs-xs)">Privacy</a>
+            <a href="#" style="color:var(--neutral-500);text-decoration:none;font-size:var(--fs-xs)">Terms</a>
+          </div>
+        </div>
+      </div>
+    </footer>
+  </div>`;
+}
+
+// ==================== LANDING PAGE (Unauthenticated) ====================
+function renderLandingPage(state) {
+  const stats = BCRSS.STATISTICS || {
+    shared: '2,300+', sharedLabel: 'Resources Shared',
+    students: '600+', studentsLabel: 'Students',
+    tools: '450+', toolsLabel: 'Farm Tools',
+    jobsPosted: '150+', jobsPostedLabel: 'Jobs Posted'
+  };
+
+  return `<div class="min-h-screen">
+    <!-- HERO: Split Screen Design -->
+    <section class="landing-hero">
+      <div class="landing-hero-left">
+        <div style="display:flex;flex-direction:column;gap:var(--space-8);height:100%;justify-content:center;padding:var(--space-16)">
+          <div>
+            <div class="landing-badge">
+              ${icon('handshake', 'w-4 h-4')}
+              <span>Baraton Community</span>
+            </div>
+            <h1 class="landing-hero-title">Share, Borrow,<br>Build Trust</h1>
+            <p class="landing-hero-desc">Connect with your neighbors to share farm tools, textbooks, and discover local opportunities. A platform built for the Baraton community.</p>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:var(--space-3)">
+            <button class="btn btn-primary btn-lg" onclick="APP.openModal('register')">
+              <span>Get Started Free</span>${icon('arrowRight', 'w-4 h-4')}
+            </button>
+            <button class="btn btn-outline btn-lg" onclick="APP.openModal('login')">
+              <span>Already a Member?</span>
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="landing-hero-right">
+        <div class="landing-hero-visual">
+          <div class="landing-visual-card" style="animation-delay:0s">
+            ${renderItemImage('sprayer', 'farm tools', 'h-32 w-40 rounded-lg mb-3')}
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--color-primary)">Farm Equipment</div>
+            <div style="font-size:var(--fs-sm);font-weight:700;color:var(--color-text)">Knapsack Sprayer</div>
+          </div>
+          <div class="landing-visual-card" style="animation-delay:0.2s">
+            ${renderItemImage('biology', 'textbooks', 'h-32 w-40 rounded-lg mb-3')}
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#8c6239">Textbook</div>
+            <div style="font-size:var(--fs-sm);font-weight:700;color:var(--color-text)">Campbell Biology</div>
+          </div>
+          <div class="landing-visual-card" style="animation-delay:0.4s">
+            <div style="display:flex;align-items:center;gap:var(--space-3);padding:var(--space-3)">
+              <div class="avatar bg-green" style="width:48px;height:48px;font-size:var(--fs-sm)">MC</div>
+              <div>
+                <div style="font-weight:600;font-size:var(--fs-sm);color:var(--color-text)">Mary Chebet</div>
+                <div style="display:flex;align-items:center;gap:2px;margin-top:2px">
+                  ${Array(5).fill('<span class="star filled" style="font-size:12px">★</span>').join('')}
+                  <span style="font-size:11px;color:var(--color-text-tertiary);margin-left:4px">5.0</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- IMPACT STATS: Dark Background Strip -->
+    <section class="landing-impact">
+      <div class="container">
+        <div class="landing-impact-header">
+          <h2 style="font-family:var(--font-serif);font-size:var(--fs-3xl);font-weight:700;color:white;margin-bottom:var(--space-2)">Community Impact</h2>
+          <p style="font-size:var(--fs-md);color:rgba(255,255,255,0.8);max-width:500px">Real numbers from real people sharing and supporting each other</p>
+        </div>
+        <div class="landing-stats-grid">
+          <div class="landing-stat-card">
+            <div class="landing-stat-number">${stats.shared}</div>
+            <div class="landing-stat-label">${stats.sharedLabel}</div>
+          </div>
+          <div class="landing-stat-card">
+            <div class="landing-stat-number">${stats.students}</div>
+            <div class="landing-stat-label">${stats.studentsLabel}</div>
+          </div>
+          <div class="landing-stat-card">
+            <div class="landing-stat-number">${stats.tools}</div>
+            <div class="landing-stat-label">${stats.toolsLabel}</div>
+          </div>
+          <div class="landing-stat-card">
+            <div class="landing-stat-number">${stats.jobsPosted}</div>
+            <div class="landing-stat-label">${stats.jobsPostedLabel}</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- VALUE PROPOSITION: Why Join -->
+    <section class="page-section py-20">
+      <div class="container">
+        <div class="section-header">
+          <h2 class="section-title">Why Join BCRSS?</h2>
+          <p class="section-subtitle">Everything you need to share resources and build community</p>
+        </div>
+        <div class="landing-value-grid">
+          <div class="landing-value-card">
+            <div class="landing-value-icon" style="background:var(--color-success-bg);color:var(--color-success)">${icon('shovel', 'w-6 h-6')}</div>
+            <h3 style="font-family:var(--font-serif);font-size:var(--fs-lg);font-weight:700;color:var(--color-text);margin-bottom:var(--space-2)">Share Farm Tools</h3>
+            <p style="font-size:var(--fs-sm);color:var(--color-text-secondary);line-height:1.7">Lend or borrow ploughs, sprayers, wheelbarrows, and more from trusted neighbors during off-seasons.</p>
+          </div>
+          <div class="landing-value-card">
+            <div class="landing-value-icon" style="background:#f9f5eb;color:#8c6239">${icon('book', 'w-6 h-6')}</div>
+            <h3 style="font-family:var(--font-serif);font-size:var(--fs-lg);font-weight:700;color:var(--color-text);margin-bottom:var(--space-2)">Exchange Textbooks</h3>
+            <p style="font-size:var(--fs-sm);color:var(--color-text-secondary);line-height:1.7">Find academic books shared by fellow students. Share course texts you no longer need affordably.</p>
+          </div>
+          <div class="landing-value-card">
+            <div class="landing-value-icon" style="background:var(--info-bg, #eef2ff);color:var(--color-info, #4f46e5)">${icon('briefcase', 'w-6 h-6')}</div>
+            <h3 style="font-family:var(--font-serif);font-size:var(--fs-lg);font-weight:700;color:var(--color-text);margin-bottom:var(--space-2)">Find Local Jobs</h3>
+            <p style="font-size:var(--fs-sm);color:var(--color-text-secondary);line-height:1.7">Post or discover casual labor, farm work, tutoring, and skill-sharing opportunities nearby.</p>
+          </div>
+          <div class="landing-value-card">
+            <div class="landing-value-icon" style="background:var(--color-primary-light);color:var(--color-primary)">${icon('shield', 'w-6 h-6')}</div>
+            <h3 style="font-family:var(--font-serif);font-size:var(--fs-lg);font-weight:700;color:var(--color-text);margin-bottom:var(--space-2)">Verified & Safe</h3>
+            <p style="font-size:var(--fs-sm);color:var(--color-text-secondary);line-height:1.7">Community-verified members, admin moderation, and star ratings ensure trust and accountability.</p>
+          </div>
+          <div class="landing-value-card">
+            <div class="landing-value-icon" style="background:rgba(255,193,7,0.2);color:#ffc107">${icon('star', 'w-6 h-6')}</div>
+            <h3 style="font-family:var(--font-serif);font-size:var(--fs-lg);font-weight:700;color:var(--color-text);margin-bottom:var(--space-2)">Peer Reviews</h3>
+            <p style="font-size:var(--fs-sm);color:var(--color-text-secondary);line-height:1.7">Build your reputation through honest reviews. Every transaction strengthens community bonds.</p>
+          </div>
+          <div class="landing-value-card">
+            <div class="landing-value-icon" style="background:var(--color-primary-light);color:var(--color-primary)">${icon('users', 'w-6 h-6')}</div>
+            <h3 style="font-family:var(--font-serif);font-size:var(--fs-lg);font-weight:700;color:var(--color-text);margin-bottom:var(--space-2)">Community First</h3>
+            <p style="font-size:var(--fs-sm);color:var(--color-text-secondary);line-height:1.7">Built specifically for Baraton. Support your neighbors and strengthen local solidarity.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- HOW IT WORKS: Timeline -->
+    <section class="page-section py-20" style="background:var(--neutral-100);border-top:1px solid var(--color-border-light);border-bottom:1px solid var(--color-border-light)">
+      <div class="container">
+        <div class="section-header">
+          <h2 class="section-title">How It Works</h2>
+          <p class="section-subtitle">Four simple steps to start sharing and earning</p>
+        </div>
+        <div class="landing-timeline">
+          ${[
+            { num: '1', title: 'Sign Up', desc: 'Create your free account and join the Baraton community.' },
+            { num: '2', title: 'List or Browse', desc: 'Share your items or search for resources you need.' },
+            { num: '3', title: 'Connect', desc: 'Request to borrow or apply for opportunities instantly.' },
+            { num: '4', title: 'Rate & Repeat', desc: 'Leave reviews and build your trusted reputation.' }
+          ].map((step, idx) => `
+            <div class="landing-timeline-item">
+              <div class="landing-timeline-number">${step.num}</div>
+              <div class="landing-timeline-content">
+                <h3 style="font-family:var(--font-serif);font-size:var(--fs-lg);font-weight:700;color:var(--color-text);margin-bottom:var(--space-2)">${step.title}</h3>
+                <p style="font-size:var(--fs-sm);color:var(--color-text-secondary)">${step.desc}</p>
+              </div>
+              ${idx < 3 ? '<div class="landing-timeline-arrow">' + icon('arrowRight', 'w-5 h-5') + '</div>' : ''}
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    </section>
+
+    <!-- TESTIMONIALS -->
+    <section class="page-section py-20">
+      <div class="container">
+        <div class="section-header">
+          <h2 class="section-title">What Members Say</h2>
+          <p class="section-subtitle">Real stories from the Baraton community</p>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:var(--space-6)">
+          ${BCRSS.TESTIMONIALS.map(t => `
+            <div class="testimonial-card">
+              <div style="display:flex;align-items:center;gap:var(--space-3);margin-bottom:var(--space-4)">
+                <div class="avatar ${t.avatar || 'bg-green'}" style="width:48px;height:48px;font-size:var(--fs-sm)">${t.initials || 'BC'}</div>
+                <div>
+                  <div style="font-weight:600;font-size:var(--fs-sm);color:var(--color-text)">${t.name}</div>
+                  <div style="display:flex;align-items:center;gap:2px;margin-top:2px">
+                    ${Array(5).fill('').map((_,i) => `<span class="star ${i < t.rating ? 'filled' : ''}" style="font-size:12px">★</span>`).join('')}
+                  </div>
+                </div>
+              </div>
+              <p style="font-size:var(--fs-sm);color:var(--color-text-secondary);line-height:1.7;font-style:italic;margin-bottom:var(--space-3)">&quot;${t.text}&quot;</p>
+              <div style="font-size:11px;color:var(--color-text-tertiary)">${t.role}</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA: Join Now -->
+    <section class="landing-cta">
+      <div class="container" style="text-align:center">
+        <h2 style="font-family:var(--font-serif);font-size:var(--fs-4xl);font-weight:700;color:white;margin-bottom:var(--space-4)">Ready to Join?</h2>
+        <p style="font-size:var(--fs-lg);color:rgba(255,255,255,0.9);margin-bottom:var(--space-8);max-width:600px;margin-left:auto;margin-right:auto">Start sharing resources and building community trust today. It's free, simple, and made for Baraton.</p>
+        <div style="display:flex;flex-wrap:wrap;gap:var(--space-4);justify-content:center">
+          <button class="btn btn-primary btn-lg" onclick="APP.openModal('register')">
+            <span>Create Free Account</span>${icon('arrowRight', 'w-4 h-4')}
+          </button>
+          <button class="btn btn-outline btn-lg" style="border-color:white;color:white" onclick="APP.changeTab('resources')">
+            <span>Browse Resources</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="app-footer">
+      <div class="container">
+        <div class="footer-grid">
+          <div>
+            <div class="footer-brand">
+              <div style="display:flex;align-items:center;gap:var(--space-2);margin-bottom:var(--space-3)">
+                <div style="width:36px;height:36px;border-radius:var(--radius-md);background:var(--sky-blue);color:var(--pistel-blue);display:flex;align-items:center;justify-content:center">${icon('handshake', 'w-5 h-5')}</div>
+                <span>BCRSS</span>
+              </div>
+            </div>
+            <p class="footer-desc">Empowering the Baraton community through shared resources and opportunities. Built for neighborhood solidarity.</p>
+          </div>
+          <div>
+            <div class="footer-heading">Quick Links</div>
+            <ul class="footer-links">
+              <li><a href="#" onclick="event.preventDefault();APP.changeTab('resources')">Browse Resources</a></li>
+              <li><a href="#" onclick="event.preventDefault();APP.changeTab('jobs')">Find Jobs</a></li>
+              <li><a href="#" onclick="event.preventDefault();APP.openModal('register')">Join Community</a></li>
+            </ul>
+          </div>
+          <div>
+            <div class="footer-heading">Community</div>
+            <ul class="footer-links">
+              <li><a href="#" onclick="event.preventDefault();APP.openModal('register')">Sign Up</a></li>
+              <li><a href="#" onclick="event.preventDefault();APP.openModal('login')">Log In</a></li>
+              <li><a href="#">About BCRSS</a></li>
             </ul>
           </div>
           <div>
