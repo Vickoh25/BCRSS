@@ -348,7 +348,7 @@ function renderHomePage(state) {
 
 // OLD HOME PAGE CONTENT (Kept for reference or if unauthenticated landing needs a fallback)
 function renderOldHomePage(state) {
-
+    return `
     <!-- 2. COMMUNITY STATISTICS -->
     <section class="stats-section" style="background:var(--color-primary-light);border-top:1px solid var(--color-border-light);border-bottom:1px solid var(--color-border-light)">
       <div class="container">
