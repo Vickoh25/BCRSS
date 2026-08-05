@@ -88,40 +88,20 @@ WSGI_APPLICATION = 'bcrss_config.wsgi.application'
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
 # Database configuration - uses SQLite in development, PostgreSQL in production
-import re
+import dj_database_url
 
-database_url = os.getenv('DATABASE_URL', '')
-if database_url:
-    # Parse DATABASE_URL (e.g. postgres://user:pass@host:port/dbname)
-    match = re.match(
-        r'postgres(?:ql)?://([^:]+):([^@]+)@([^:]+):?(\d*)/?(.*)',
-        database_url
-    )
-    if match:
-        DATABASES = {
-            'default': {
-                'ENGINE': 'django.db.backends.postgresql',
-                'NAME': match.group(5),
-                'USER': match.group(1),
-                'PASSWORD': match.group(2),
-                'HOST': match.group(3),
-                'PORT': match.group(4) or '5432',
-            }
-        }
-    else:
-        DATABASES = {
-            'default': {
-                'ENGINE': 'django.db.backends.sqlite3',
-                'NAME': BASE_DIR / 'db.sqlite3',
-            }
-        }
-else:
-    DATABASES = {
+DATABASES = {
+    'default': dj_database_url.config(
+        default=os.getenv('DATABASE_URL', ''),
+        conn_max_age=600,
+        ssl_require=os.getenv('DEBUG', 'True') != 'True',
+    ) if os.getenv('DATABASE_URL') else {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
             'NAME': BASE_DIR / 'db.sqlite3',
         }
     }
+}
 
 
 # Password validation
