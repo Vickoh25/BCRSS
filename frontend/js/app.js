@@ -245,8 +245,8 @@ const APP = {
 
   // ==================== NAVIGATION ====================
   changeTab(tab) {
-    // Block unauthenticated users from accessing dashboard
-    if (tab === 'dashboard' && !this.state.currentUser) {
+    // Block unauthenticated users from protected pages
+    if ((tab === 'resources' || tab === 'jobs' || tab === 'dashboard') && !this.state.currentUser) {
       this.openModal('login');
       return;
     }
