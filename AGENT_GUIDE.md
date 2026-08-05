@@ -3,7 +3,9 @@
 > **ATTENTION AGENT:** Read this file first to understand the project architecture and save tokens. Do not read the entire codebase unless specifically requested.
 
 ## 🌟 Project Overview
-**BCRSS** (Baraton Community Resource Sharing System) is a peer-to-peer platform for sharing tools, textbooks, and household items, alongside a community job board.
+**BCRSS** (Baraton Community Resource Sharing System) is a peer-to-peer platform designed to align with the community's core objectives:
+- **Objective 1 Alignment**: Explicitly supports **neighborhood households, farmers, traders, and chama groups** in listing, discovering, and exchanging resources.
+- **Scope**: Covers farm tools, textbooks, household items, trade equipment, and community job opportunities.
 
 ## 🏗️ Architecture & Deployment
 | Component | Technology Stack | Deployment URL |
@@ -19,6 +21,7 @@
 
 ## 📂 Key Entry Points
 - **Frontend Core**: `frontend/js/app.js` (State management & Routing).
+- **Mock Data & Objectives**: `frontend/js/data.js` (Contains alignment data for farmers, traders, and chamas).
 - **API Client**: `frontend/js/api.js` (Handles all backend communication).
 - **Backend Config**: `backend/bcrss_config/settings.py` & `urls.py`.
 - **User Models**: `backend/users/models.py`.

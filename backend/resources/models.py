@@ -6,6 +6,8 @@ class Resource(models.Model):
         ('farm tools', 'Farm Tools'),
         ('textbooks', 'Textbooks'),
         ('household items', 'Household Items'),
+        ('trade equipment', 'Trade Equipment'),
+        ('chama resources', 'Chama Resources'),
     )
     
     CONDITION_CHOICES = (

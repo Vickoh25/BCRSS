@@ -16,8 +16,8 @@ const BCRSS = {};
 BCRSS.STATISTICS = {
   shared: '2,300+',
   sharedLabel: 'Resources Shared',
-  students: '600+',
-  studentsLabel: 'Students',
+  groups: '120+',
+  groupsLabel: 'Chamas & Traders',
   tools: '450+',
   toolsLabel: 'Farm Tools',
   jobsPosted: '150+',
@@ -211,6 +211,36 @@ BCRSS.INITIAL_RESOURCES = [
     status: 'Borrowed',
     listedDate: '2026-06-06',
     imageCode: 'wheelbarrow'
+  },
+  {
+    id: 'res-weighing',
+    title: 'Digital Weighing Scale',
+    category: 'trade equipment',
+    condition: 'Excellent',
+    description: 'High-precision digital scale for traders and market vendors. Battery operated, supports up to 50kg. Ideal for weighing produce at the Baraton market.',
+    lendingType: 'Borrowing',
+    location: 'Baraton Market',
+    ownerId: 'user-mary',
+    ownerName: 'Mary Chebet',
+    ownerContact: '+254 722 000111',
+    status: 'Available',
+    listedDate: '2026-07-15',
+    imageCode: 'generic'
+  },
+  {
+    id: 'res-tent',
+    title: 'Community Meeting Tent',
+    category: 'chama resources',
+    condition: 'Good',
+    description: 'Large 50-seater tent available for chama meetings, community gatherings, or family events. Stored near the Baraton Primary School.',
+    lendingType: 'Borrowing',
+    location: 'Baraton Village',
+    ownerId: 'user-elijah',
+    ownerName: 'Elijah Sang',
+    ownerContact: '+254 701 123456',
+    status: 'Available',
+    listedDate: '2026-07-20',
+    imageCode: 'generic'
   }
 ];
 
@@ -274,6 +304,36 @@ BCRSS.INITIAL_JOBS = [
     postedDate: '2026-06-06',
     contactInfo: '+254 731 222111',
     requirements: []
+  },
+  {
+    id: 'job-trader',
+    title: 'Market Stall Assistant',
+    category: 'Trade & Business',
+    status: 'Open',
+    description: 'Assistant needed for a busy market stall during the peak Saturday market. Tasks include setting up displays, attending to customers, and packing goods.',
+    location: 'Baraton Open Market',
+    rate: 'KSh 600/day',
+    duration: 'Every Saturday',
+    postedBy: 'Baraton Traders Assoc',
+    postedById: 'user-traders',
+    postedDate: '2026-07-25',
+    contactInfo: '+254 733 111222',
+    requirements: ['Good communication skills', 'Honesty', 'Punctuality']
+  },
+  {
+    id: 'job-chama',
+    title: 'Chama Records Secretary',
+    category: 'Chama Activities',
+    status: 'Open',
+    description: 'The Upendo Chama is looking for a part-time secretary to help with record-keeping, minutes taking, and managing our digital contributions log.',
+    location: 'Baraton Community Hall',
+    rate: 'KSh 1,500/month',
+    duration: 'Ongoing (Monthly Meetings)',
+    postedBy: 'Chama Upendo',
+    postedById: 'user-chama',
+    postedDate: '2026-07-28',
+    contactInfo: '+254 731 222111',
+    requirements: ['Basic computer skills', 'Excellent organization', 'Discretion']
   }
 ];
 

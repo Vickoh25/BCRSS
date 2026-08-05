@@ -7,6 +7,8 @@ class JobOpportunity(models.Model):
         ('Farm Work', 'Farm Work'),
         ('Tutoring', 'Tutoring'),
         ('Casual Labor', 'Casual Labor'),
+        ('Trade & Business', 'Trade & Business'),
+        ('Chama Activities', 'Chama Activities'),
     )
     
     STATUS_CHOICES = (
