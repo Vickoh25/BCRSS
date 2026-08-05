@@ -77,3 +77,59 @@ class UserViewSet(viewsets.ModelViewSet):
         user.save()
         serializer = UserSerializer(user)
         return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def get_analytics(self, request):
+        """Admin endpoint for resource utilization reports"""
+        if not self._is_role_admin(request.user):
+            return Response({'detail': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+        
+        from resources.models import Resource
+        from jobs.models import JobOpportunity
+        from borrow_requests.models import BorrowRequest
+        from django.db.models import Count
+        
+        # Resource stats
+        total_resources = Resource.objects.count()
+        available_resources = Resource.objects.filter(status='Available').count()
+        borrowed_resources = Resource.objects.filter(status='Borrowed').count()
+        resources_by_category = Resource.objects.values('category').annotate(count=Count('id'))
+        
+        # Job stats
+        total_jobs = JobOpportunity.objects.count()
+        open_jobs = JobOpportunity.objects.filter(status='Open').count()
+        filled_jobs = JobOpportunity.objects.filter(status='Filled').count()
+        
+        # Borrowing stats
+        total_requests = BorrowRequest.objects.count()
+        approved_requests = BorrowRequest.objects.filter(status='Approved').count()
+        returned_requests = BorrowRequest.objects.filter(status='Returned').count()
+        disputed_requests = BorrowRequest.objects.filter(is_disputed=True).count()
+        
+        # User stats
+        total_users = User.objects.count()
+        admins = User.objects.filter(role='Admin').count()
+        
+        return Response({
+            'resources': {
+                'total': total_resources,
+                'available': available_resources,
+                'borrowed': borrowed_resources,
+                'by_category': list(resources_by_category)
+            },
+            'jobs': {
+                'total': total_jobs,
+                'open': open_jobs,
+                'filled': filled_jobs
+            },
+            'requests': {
+                'total': total_requests,
+                'approved': approved_requests,
+                'returned': returned_requests,
+                'disputed': disputed_requests
+            },
+            'users': {
+                'total': total_users,
+                'admins': admins
+            }
+        })

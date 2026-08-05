@@ -13,6 +13,7 @@ const APP = {
     requests: [],
     reviews: [],
     currentUser: null,
+    analytics: null,
 
     // UI - Navigation
     currentTab: 'home',
@@ -264,6 +265,9 @@ const APP = {
   setAdminTab(tab) {
     this.state.adminTab = tab;
     this.state.adminSearch = '';
+    if (tab === 'reports') {
+      this.loadAnalytics();
+    }
     this.render();
   },
 
@@ -579,6 +583,38 @@ const APP = {
       this.init();
     } catch (err) {
       alert('Failed to send reminder.');
+    }
+  },
+
+  async raiseDispute(requestId) {
+    const message = prompt('Please describe the issue:');
+    if (!message) return;
+    try {
+      await apiClient.raiseDispute(requestId, message);
+      alert('Dispute raised. A community manager will review it.');
+      this.init();
+    } catch (err) {
+      alert('Failed to raise dispute.');
+    }
+  },
+
+  async resolveDispute(requestId, status) {
+    try {
+      await apiClient.resolveDispute(requestId, status);
+      alert('Dispute resolved.');
+      this.init();
+    } catch (err) {
+      alert('Failed to resolve dispute.');
+    }
+  },
+
+  async loadAnalytics() {
+    if (!this.state.currentUser || this.state.currentUser.role !== 'Admin') return;
+    try {
+      this.state.analytics = await apiClient.getAnalytics();
+      this.render();
+    } catch (err) {
+      console.warn('Failed to load analytics');
     }
   },
 

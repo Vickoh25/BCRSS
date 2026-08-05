@@ -251,6 +251,9 @@ class APIClient {
   declineBorrowRequest(id) { return this.request(`/borrow-requests/${id}/decline/`, { method: 'POST' }); }
   markBorrowRequestReturned(id) { return this.request(`/borrow-requests/${id}/mark_returned/`, { method: 'POST' }); }
   sendBorrowRequestReminder(id) { return this.request(`/borrow-requests/${id}/send_reminder/`, { method: 'POST' }); }
+  raiseDispute(id, message) { return this.request(`/borrow-requests/${id}/raise_dispute/`, { method: 'POST', body: { message } }); }
+  resolveDispute(id, status) { return this.request(`/borrow-requests/${id}/resolve_dispute/`, { method: 'POST', body: { status } }); }
+  getAnalytics() { return this.request('/users/get_analytics/'); }
 
   // Helper to map backend review to frontend shape
   mapReview(rev) {

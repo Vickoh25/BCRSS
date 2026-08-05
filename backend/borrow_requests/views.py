@@ -108,6 +108,30 @@ class BorrowRequestViewSet(viewsets.ModelViewSet):
         borrow_request.save()
         serializer = BorrowRequestSerializer(borrow_request)
         return Response(serializer.data)
+
+    @action(detail=True, methods=['post'])
+    def raise_dispute(self, request, pk=None):
+        """Raise a dispute for a borrow request"""
+        borrow_request = self.get_object()
+        if borrow_request.requester != request.user and borrow_request.owner != request.user and not request.user.is_admin():
+            return Response({'detail': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+        
+        borrow_request.is_disputed = True
+        borrow_request.dispute_message = request.data.get('message', 'No reason provided')
+        borrow_request.save()
+        return Response({'detail': 'Dispute raised successfully'})
+
+    @action(detail=True, methods=['post'])
+    def resolve_dispute(self, request, pk=None):
+        """Resolve a dispute (Admin only)"""
+        if not request.user.is_admin():
+            return Response({'detail': 'Only admins can resolve disputes'}, status=status.HTTP_403_FORBIDDEN)
+        
+        borrow_request = self.get_object()
+        borrow_request.is_disputed = False
+        borrow_request.status = request.data.get('status', borrow_request.status)
+        borrow_request.save()
+        return Response({'detail': 'Dispute resolved successfully'})
     
     @action(detail=True, methods=['post'])
     def mark_returned(self, request, pk=None):

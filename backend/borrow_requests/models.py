@@ -19,6 +19,8 @@ class BorrowRequest(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')
     message = models.TextField(blank=True, null=True)
     reminder_sent = models.BooleanField(default=False)
+    is_disputed = models.BooleanField(default=False)
+    dispute_message = models.TextField(blank=True, null=True)
     request_date = models.DateField(auto_now_add=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

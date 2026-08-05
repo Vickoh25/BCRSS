@@ -10,7 +10,7 @@ class BorrowRequestSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = BorrowRequest
-        fields = ['id', 'item', 'requester', 'owner', 'start_date', 'end_date', 'status', 'message', 'reminder_sent', 'request_date', 'created_at', 'updated_at']
+        fields = ['id', 'item', 'requester', 'owner', 'start_date', 'end_date', 'status', 'message', 'reminder_sent', 'is_disputed', 'dispute_message', 'request_date', 'created_at', 'updated_at']
         read_only_fields = ['id', 'request_date', 'created_at', 'updated_at']
 
 class BorrowRequestCreateSerializer(serializers.ModelSerializer):

@@ -882,6 +882,7 @@ function renderDashboardRequests(state) {
                       <button class="btn btn-sm" style="background:var(--neutral-800);color:white" onclick="APP.sendReminder('${req.id}');event.stopPropagation()">Send Reminder</button>
                     ` : ''}
                     <button class="btn btn-sm btn-outline" onclick="APP.markReturned('${req.id}');event.stopPropagation()">Mark Returned</button>
+                    ${!req.is_disputed ? `<button class="btn btn-sm" style="background:var(--color-error-bg);color:var(--color-error);border:none" onclick="APP.raiseDispute('${req.id}');event.stopPropagation()">Dispute</button>` : ''}
                   ` : `<span style="font-size:var(--fs-sm);color:var(--color-text-tertiary)">—</span>`}
                 </div>
               </td>
@@ -943,7 +944,8 @@ function renderAdminPage(state) {
     { id: 'jobs', label: 'Jobs' },
     { id: 'requests', label: 'Requests' },
     { id: 'users', label: 'Users' },
-    { id: 'reviews', label: 'Reviews' }
+    { id: 'reviews', label: 'Reviews' },
+    { id: 'reports', label: 'Reports' }
   ];
 
   return `<div class="page-section" style="min-height:100vh">
@@ -962,6 +964,7 @@ function renderAdminPage(state) {
       ${adminTab === 'requests' ? renderAdminRequests(state) : ''}
       ${adminTab === 'users' ? renderAdminUsers(state) : ''}
       ${adminTab === 'reviews' ? renderAdminReviews(state) : ''}
+      ${adminTab === 'reports' ? renderAdminReports(state) : ''}
     </div>
   </div>`;
 }
@@ -1030,23 +1033,81 @@ function renderAdminJobs(state) {
 
 function renderAdminRequests(state) {
   const { requests } = state;
+  const statusColors = {
+    'Pending': 'badge-pending', 'Approved': 'badge-approved',
+    'Declined': 'badge-declined', 'Returned': 'badge-returned'
+  };
+
   return `
   <div class="table-container">
     <div style="overflow-x:auto">
       <table class="data-table">
-        <thead><tr><th>Item</th><th>Requester</th><th>Owner</th><th>Status</th><th style="text-align:right">Actions</th></tr></thead>
+        <thead><tr><th>Item</th><th>Requester</th><th>Owner</th><th>Status</th><th>Issues</th><th style="text-align:right">Actions</th></tr></thead>
         <tbody>
           ${requests.length > 0 ? requests.map(req => `<tr>
             <td><span style="font-weight:500;color:var(--color-text);font-size:var(--fs-sm)">${req.itemTitle}</span></td>
             <td style="color:var(--color-text-secondary);font-size:var(--fs-sm)">${req.requesterName}</td>
             <td style="color:var(--color-text-secondary);font-size:var(--fs-sm)">${req.ownerId}</td>
-            <td><span class="badge ${req.status === 'Pending' ? 'badge-pending' : req.status === 'Approved' ? 'badge-approved' : req.status === 'Declined' ? 'badge-declined' : 'badge-returned'}">${req.status}</span></td>
-            <td style="text-align:right">
-              <button class="btn btn-sm btn-outline" onclick="APP.deleteRequest('${req.id}')">Delete</button>
+            <td><span class="badge ${statusColors[req.status] || 'badge-pending'}">${req.status}</span></td>
+            <td>
+              ${req.is_disputed ? `<span class="badge" style="background:var(--color-error-bg);color:var(--color-error)">Disputed</span>` : `<span style="color:var(--color-text-tertiary)">None</span>`}
             </td>
-          </tr>`).join('') : `<tr><td colspan="5" style="text-align:center;color:var(--color-text-tertiary);padding:var(--space-8)">No requests found.</td></tr>`}
+            <td style="text-align:right">
+              <div style="display:flex;justify-content:flex-end;gap:var(--space-2)">
+                ${req.is_disputed ? `
+                  <button class="btn btn-sm" style="background:var(--color-primary);color:white" onclick="APP.resolveDispute('${req.id}', 'Returned')">Resolve</button>
+                ` : ''}
+                <button class="btn btn-sm btn-outline" onclick="APP.deleteRequest('${req.id}')">Delete</button>
+              </div>
+            </td>
+          </tr>`).join('') : `<tr><td colspan="6" style="text-align:center;color:var(--color-text-tertiary);padding:var(--space-8)">No requests found.</td></tr>`}
         </tbody>
       </table>
+    </div>
+  </div>`;
+}
+
+function renderAdminReports(state) {
+  const { analytics } = state;
+  if (!analytics) return `<div class="empty-state"><p>Loading reports...</p></div>`;
+
+  return `
+  <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));gap:var(--space-6);margin-bottom:var(--space-8)">
+    <div class="metric-card">
+      <h4 style="font-size:var(--fs-sm);color:var(--color-text-tertiary);margin-bottom:var(--space-2)">Resource Utilization</h4>
+      <div style="font-size:var(--fs-3xl);font-weight:700;color:var(--color-text)">${((analytics.resources.borrowed / analytics.resources.total) * 100).toFixed(1)}%</div>
+      <p style="font-size:var(--fs-xs);color:var(--color-text-secondary)">${analytics.resources.borrowed} of ${analytics.resources.total} items currently borrowed</p>
+    </div>
+    <div class="metric-card">
+      <h4 style="font-size:var(--fs-sm);color:var(--color-text-tertiary);margin-bottom:var(--space-2)">Community Engagement</h4>
+      <div style="font-size:var(--fs-3xl);font-weight:700;color:var(--color-text)">${analytics.requests.total}</div>
+      <p style="font-size:var(--fs-xs);color:var(--color-text-secondary)">Total borrow requests processed</p>
+    </div>
+    <div class="metric-card">
+      <h4 style="font-size:var(--fs-sm);color:var(--color-text-tertiary);margin-bottom:var(--space-2)">Conflict Rate</h4>
+      <div style="font-size:var(--fs-3xl);font-weight:700;color:var(--color-error)">${((analytics.requests.disputed / analytics.requests.total) * 100 || 0).toFixed(1)}%</div>
+      <p style="font-size:var(--fs-xs);color:var(--color-text-secondary)">${analytics.requests.disputed} disputes raised</p>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-8)">
+    <div class="table-container">
+      <h3 style="font-family:var(--font-serif);font-size:var(--fs-lg);font-weight:700;margin-bottom:var(--space-4)">Resources by Category</h3>
+      <table class="data-table">
+        <thead><tr><th>Category</th><th>Count</th></tr></thead>
+        <tbody>
+          ${analytics.resources.by_category.map(c => `<tr><td>${c.category}</td><td>${c.count}</td></tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+    <div class="table-container">
+      <h3 style="font-family:var(--font-serif);font-size:var(--fs-lg);font-weight:700;margin-bottom:var(--space-4)">Platform Summary</h3>
+      <div style="display:flex;flex-direction:column;gap:var(--space-4)">
+        <div style="display:flex;justify-content:space-between"><span>Total Users</span><span style="font-weight:600">${analytics.users.total}</span></div>
+        <div style="display:flex;justify-content:space-between"><span>Admins</span><span style="font-weight:600">${analytics.users.admins}</span></div>
+        <div style="display:flex;justify-content:space-between"><span>Open Jobs</span><span style="font-weight:600">${analytics.jobs.open}</span></div>
+        <div style="display:flex;justify-content:space-between"><span>Success Rate</span><span style="font-weight:600">${((analytics.requests.returned / analytics.requests.approved) * 100 || 0).toFixed(1)}%</span></div>
+      </div>
     </div>
   </div>`;
 }
