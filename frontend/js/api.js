@@ -255,6 +255,37 @@ class APIClient {
   resolveDispute(id, status) { return this.request(`/borrow-requests/${id}/resolve_dispute/`, { method: 'POST', body: { status } }); }
   getAnalytics() { return this.request('/users/get_analytics/'); }
 
+  async downloadReport() {
+    const url = `${this.baseURL}/users/download_report/`;
+    const headers = this.getHeaders();
+    
+    try {
+      const response = await fetch(url, { method: 'GET', headers });
+      if (!response.ok) throw new Error('Failed to download report');
+      
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      
+      // Extract filename from header if possible
+      const contentDisposition = response.headers.get('Content-Disposition');
+      let filename = 'BCRSS_Report.pdf';
+      if (contentDisposition && contentDisposition.indexOf('filename=') !== -1) {
+        filename = contentDisposition.split('filename=')[1].replace(/"/g, '');
+      }
+      
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(downloadUrl);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Report download failed:', error);
+      throw error;
+    }
+  }
+
   // Helper to map backend review to frontend shape
   mapReview(rev) {
     if (!rev) return null;

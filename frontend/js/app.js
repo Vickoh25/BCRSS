@@ -346,6 +346,14 @@ const APP = {
     }
   },
 
+  async handleDownloadReport() {
+    try {
+      await apiClient.downloadReport();
+    } catch (err) {
+      alert('Failed to download report. Please try again later.');
+    }
+  },
+
   async handleLogout() {
     const refreshToken = localStorage.getItem('refresh_token');
     if (refreshToken) {

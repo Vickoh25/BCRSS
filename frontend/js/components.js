@@ -1054,9 +1054,15 @@ function renderDashboardPage(state) {
 
   return `<div class="page-section" style="min-height:100vh">
     <div class="container">
-      <div style="margin-bottom:var(--space-8)">
-        <h1 style="font-family:var(--font-serif);font-size:var(--fs-4xl);font-weight:700;color:var(--color-text);letter-spacing:-0.02em;line-height:1.1">Dashboard</h1>
-        <p style="font-size:var(--fs-base);color:var(--color-text-secondary);margin-top:var(--space-1)">Welcome back, ${currentUser.name}</p>
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:var(--space-8);flex-wrap:wrap;gap:var(--space-4)">
+        <div>
+          <h1 style="font-family:var(--font-serif);font-size:var(--fs-4xl);font-weight:700;color:var(--color-text);letter-spacing:-0.02em;line-height:1.1">Dashboard</h1>
+          <p style="font-size:var(--fs-base);color:var(--color-text-secondary);margin-top:var(--space-1)">Welcome back, ${currentUser.name}</p>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="APP.handleDownloadReport()">
+          ${icon('clipboard', 'w-4 h-4')}
+          <span>Download Activity Report</span>
+        </button>
       </div>
 
       <!-- Stats row -->
@@ -1355,8 +1361,54 @@ function renderAdminRequests(state) {
 
 function renderAdminReports(state) {
   const { analytics } = state;
-  if (!analytics) return `<div class="empty-state"><p>Loading reports...</p></div>`;
+  
+  return `<div class="admin-reports-view">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-8)">
+      <h2 style="font-family:var(--font-serif);font-size:var(--fs-2xl);font-weight:700;color:var(--color-text)">Community Analytics & Reports</h2>
+      <button class="btn btn-primary" onclick="APP.handleDownloadReport()">
+        ${icon('clipboard', 'w-4 h-4')}
+        <span>Generate Full PDF Report</span>
+      </button>
+    </div>
 
+    ${analytics ? `
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:var(--space-6)">
+        <div class="metric-card">
+          <h3 style="font-size:var(--fs-sm);font-weight:600;color:var(--color-text-tertiary);margin-bottom:var(--space-4);text-transform:uppercase;letter-spacing:0.05em">Resource Utilization</h3>
+          <div style="display:flex;flex-direction:column;gap:var(--space-3)">
+            <div style="display:flex;justify-content:space-between"><span>Total Listed</span><span style="font-weight:700">${analytics.resources.total}</span></div>
+            <div style="display:flex;justify-content:space-between"><span>Currently Available</span><span style="font-weight:700;color:var(--color-success)">${analytics.resources.available}</span></div>
+            <div style="display:flex;justify-content:space-between"><span>Currently Borrowed</span><span style="font-weight:700;color:var(--color-warning)">${analytics.resources.borrowed}</span></div>
+          </div>
+        </div>
+
+        <div class="metric-card">
+          <h3 style="font-size:var(--fs-sm);font-weight:600;color:var(--color-text-tertiary);margin-bottom:var(--space-4);text-transform:uppercase;letter-spacing:0.05em">Borrowing Activity</h3>
+          <div style="display:flex;flex-direction:column;gap:var(--space-3)">
+            <div style="display:flex;justify-content:space-between"><span>Total Requests</span><span style="font-weight:700">${analytics.requests.total}</span></div>
+            <div style="display:flex;justify-content:space-between"><span>Successfully Completed</span><span style="font-weight:700">${analytics.requests.returned}</span></div>
+            <div style="display:flex;justify-content:space-between"><span>Active Disputes</span><span style="font-weight:700;color:var(--color-error)">${analytics.requests.disputed}</span></div>
+          </div>
+        </div>
+
+        <div class="metric-card">
+          <h3 style="font-size:var(--fs-sm);font-weight:600;color:var(--color-text-tertiary);margin-bottom:var(--space-4);text-transform:uppercase;letter-spacing:0.05em">Community Growth</h3>
+          <div style="display:flex;flex-direction:column;gap:var(--space-3)">
+            <div style="display:flex;justify-content:space-between"><span>Total Members</span><span style="font-weight:700">${analytics.users.total}</span></div>
+            <div style="display:flex;justify-content:space-between"><span>Admins/Moderators</span><span style="font-weight:700">${analytics.users.admins}</span></div>
+            <div style="display:flex;justify-content:space-between"><span>Jobs Posted</span><span style="font-weight:700">${analytics.jobs.total}</span></div>
+          </div>
+        </div>
+      </div>
+    ` : `
+      <div class="empty-state">
+        <p>Loading community analytics...</p>
+      </div>
+    `}
+  </div>`;
+}
+
+function _unused_old_renderAdminReports(state) {
   return `
   <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));gap:var(--space-6);margin-bottom:var(--space-8)">
     <div class="metric-card">

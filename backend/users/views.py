@@ -3,7 +3,9 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from .models import User
+from django.http import HttpResponse
 from .serializers import UserSerializer, UserDetailSerializer
+from .reports import generate_pdf_report
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
@@ -133,3 +135,35 @@ class UserViewSet(viewsets.ModelViewSet):
                 'admins': admins
             }
         })
+
+    @action(detail=False, methods=['get'])
+    def download_report(self, request):
+        """Generate and download a PDF report"""
+        from resources.models import Resource
+        from jobs.models import JobOpportunity
+        from borrow_requests.models import BorrowRequest
+        
+        user = request.user
+        data = {}
+        
+        if user.role == 'Admin':
+            # Admin gets everything
+            data['resources'] = Resource.objects.all().select_related('owner')
+            data['jobs'] = JobOpportunity.objects.all()
+            data['requests'] = BorrowRequest.objects.all().select_related('requester', 'owner', 'item')
+            filename = f"BCRSS_Community_Report_{datetime.now().strftime('%Y%m%d')}.pdf"
+        else:
+            # Member gets only their own listings and requests they are involved in
+            data['resources'] = Resource.objects.filter(owner=user)
+            data['jobs'] = JobOpportunity.objects.filter(posted_by=user)
+            # Requests involving the user as either requester or owner
+            from django.db.models import Q
+            data['requests'] = BorrowRequest.objects.filter(Q(requester=user) | Q(owner=user)).select_related('requester', 'owner', 'item')
+            filename = f"BCRSS_Personal_Report_{user.username}_{datetime.now().strftime('%Y%m%d')}.pdf"
+            
+        from datetime import datetime
+        pdf_buffer = generate_pdf_report(user, data)
+        
+        response = HttpResponse(pdf_buffer, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
