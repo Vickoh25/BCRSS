@@ -250,6 +250,7 @@ class APIClient {
   approveBorrowRequest(id) { return this.request(`/borrow-requests/${id}/approve/`, { method: 'POST' }); }
   declineBorrowRequest(id) { return this.request(`/borrow-requests/${id}/decline/`, { method: 'POST' }); }
   markBorrowRequestReturned(id) { return this.request(`/borrow-requests/${id}/mark_returned/`, { method: 'POST' }); }
+  sendBorrowRequestReminder(id) { return this.request(`/borrow-requests/${id}/send_reminder/`, { method: 'POST' }); }
 
   // Helper to map backend review to frontend shape
   mapReview(rev) {

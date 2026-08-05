@@ -10,10 +10,30 @@ class BorrowRequestSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = BorrowRequest
-        fields = ['id', 'item', 'requester', 'owner', 'start_date', 'end_date', 'status', 'message', 'request_date', 'created_at', 'updated_at']
+        fields = ['id', 'item', 'requester', 'owner', 'start_date', 'end_date', 'status', 'message', 'reminder_sent', 'request_date', 'created_at', 'updated_at']
         read_only_fields = ['id', 'request_date', 'created_at', 'updated_at']
 
 class BorrowRequestCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = BorrowRequest
         fields = ['id', 'item', 'start_date', 'end_date', 'message']
+
+    def validate(self, data):
+        start_date = data.get('start_date')
+        end_date = data.get('end_date')
+        item = data.get('item')
+
+        if start_date and end_date and start_date > end_date:
+            raise serializers.ValidationError("End date must be after start date.")
+
+        # Check for overlapping approved requests
+        overlapping_requests = BorrowRequest.objects.filter(
+            item=item,
+            status='Approved',
+            start_date__lte=end_date,
+            end_date__gte=start_date
+        )
+        if overlapping_requests.exists():
+            raise serializers.ValidationError("This item is already booked for the selected dates.")
+
+        return data

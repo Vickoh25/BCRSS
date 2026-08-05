@@ -571,6 +571,16 @@ const APP = {
       alert('Failed to mark as returned.');
     }
   },
+  
+  async sendReminder(requestId) {
+    try {
+      await apiClient.sendBorrowRequestReminder(requestId);
+      alert('Reminder sent to borrower!');
+      this.init();
+    } catch (err) {
+      alert('Failed to send reminder.');
+    }
+  },
 
   async toggleItemStatus(itemId) {
     const item = this.state.resources.find(r => r.id === itemId);

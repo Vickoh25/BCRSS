@@ -860,18 +860,30 @@ function renderDashboardRequests(state) {
               'Pending': 'badge-pending', 'Approved': 'badge-approved',
               'Declined': 'badge-declined', 'Returned': 'badge-returned'
             };
+            const isOverdue = req.status === 'Approved' && new Date(req.endDate) < new Date();
+            const reminderSent = req.reminder_sent;
+
             return `<tr>
               <td><span style="font-weight:500;color:var(--color-text);font-size:var(--fs-sm)">${req.itemTitle}</span></td>
               <td style="color:var(--color-text-secondary);font-size:var(--fs-sm)">${req.requesterName}</td>
               <td style="color:var(--color-text-tertiary);font-size:var(--fs-sm)">${req.startDate} → ${req.endDate}</td>
-              <td><span class="badge ${statusColors[req.status] || 'badge-pending'}">${req.status}</span></td>
+              <td>
+                <span class="badge ${statusColors[req.status] || 'badge-pending'}">${req.status}</span>
+                ${isOverdue ? `<span class="badge" style="background:var(--color-error-bg);color:var(--color-error);margin-left:4px">Overdue</span>` : ''}
+                ${reminderSent ? `<span class="badge" style="background:#eef2ff;color:#4f46e5;margin-left:4px">Reminder Sent</span>` : ''}
+              </td>
               <td style="text-align:right">
-                ${isOwner && req.status === 'Pending' ? `
-                  <button class="btn btn-sm" style="background:var(--color-primary);color:white" onclick="APP.approveRequest('${req.id}');event.stopPropagation()">Approve</button>
-                  <button class="btn btn-sm btn-secondary" onclick="APP.declineRequest('${req.id}');event.stopPropagation()">Decline</button>
-                ` : isOwner && req.status === 'Approved' ? `
-                  <button class="btn btn-sm btn-outline" onclick="APP.markReturned('${req.id}');event.stopPropagation()">Mark Returned</button>
-                ` : `<span style="font-size:var(--fs-sm);color:var(--color-text-tertiary)">—</span>`}
+                <div style="display:flex;justify-content:flex-end;gap:var(--space-2)">
+                  ${isOwner && req.status === 'Pending' ? `
+                    <button class="btn btn-sm" style="background:var(--color-primary);color:white" onclick="APP.approveRequest('${req.id}');event.stopPropagation()">Approve</button>
+                    <button class="btn btn-sm btn-secondary" onclick="APP.declineRequest('${req.id}');event.stopPropagation()">Decline</button>
+                  ` : isOwner && req.status === 'Approved' ? `
+                    ${isOverdue && !reminderSent ? `
+                      <button class="btn btn-sm" style="background:var(--neutral-800);color:white" onclick="APP.sendReminder('${req.id}');event.stopPropagation()">Send Reminder</button>
+                    ` : ''}
+                    <button class="btn btn-sm btn-outline" onclick="APP.markReturned('${req.id}');event.stopPropagation()">Mark Returned</button>
+                  ` : `<span style="font-size:var(--fs-sm);color:var(--color-text-tertiary)">—</span>`}
+                </div>
               </td>
             </tr>`;
           }).join('')}

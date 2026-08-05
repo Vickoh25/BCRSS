@@ -5,6 +5,7 @@
 ## 🌟 Project Overview
 **BCRSS** (Baraton Community Resource Sharing System) is a peer-to-peer platform designed to align with the community's core objectives:
 - **Objective 1 Alignment**: Explicitly supports **neighborhood households, farmers, traders, and chama groups** in listing, discovering, and exchanging resources.
+- **Objective 2 Alignment**: Robust **resource listing and borrowing module** with request tracking, automated availability management, and return reminders for overdue items.
 - **Scope**: Covers farm tools, textbooks, household items, trade equipment, and community job opportunities.
 
 ## 🏗️ Architecture & Deployment

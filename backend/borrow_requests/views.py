@@ -80,6 +80,22 @@ class BorrowRequestViewSet(viewsets.ModelViewSet):
         
         serializer = BorrowRequestSerializer(borrow_request)
         return Response(serializer.data)
+
+    @action(detail=True, methods=['post'])
+    def send_reminder(self, request, pk=None):
+        """Send a return reminder to the requester"""
+        borrow_request = self.get_object()
+        if borrow_request.owner != request.user and not request.user.is_admin():
+            return Response({'detail': 'Only the owner can send reminders'}, status=status.HTTP_403_FORBIDDEN)
+        
+        if borrow_request.status != 'Approved':
+            return Response({'detail': 'Can only send reminders for approved requests'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        borrow_request.reminder_sent = True
+        borrow_request.save()
+        
+        # In a real app, this would trigger an email/notification
+        return Response({'detail': 'Reminder sent successfully', 'reminder_sent': True})
     
     @action(detail=True, methods=['post'])
     def decline(self, request, pk=None):
