@@ -1,5 +1,18 @@
 {
   "version": 2,
-  "buildCommand": "",
-  "outputDirectory": "."
+  "cleanUrls": true,
+  "rewrites": [
+    {
+      "source": "/js/:path*",
+      "destination": "/js/:path*"
+    },
+    {
+      "source": "/css/:path*", 
+      "destination": "/css/:path*"
+    },
+    {
+      "source": "/:path*",
+      "destination": "/index.html"
+    }
+  ]
 }
