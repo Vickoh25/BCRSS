@@ -49,17 +49,20 @@ const APP = {
       console.log('No auth token — cleared stale localStorage. Login/register to begin.');
     }
 
-    // Step 2: Load what's left in storage (will be empty if token was missing)
+    // Step 2: Load what's left in storage
     this.loadFromStorage();
 
-    // Step 3: Fetch from API and handle auth
-    await this.loadInitialData();
-
-    // Step 4: Set up global events and observers
+    // Step 3: Render immediately (shows landing page or cached data)
     this.bindGlobalEvents();
-
-    // Step 5: Render
     this.render();
+
+    // Step 4: Fetch fresh data from API in background
+    try {
+      await this.loadInitialData();
+      this.render(); // Re-render with fresh data
+    } catch (e) {
+      console.warn('Background data sync failed:', e);
+    }
   },
 
   async loadInitialData() {

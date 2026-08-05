@@ -2,7 +2,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 class ApiService {
-  static const String baseUrl = 'https://berss-backend.onrender.com/api';
+  static const String baseUrl = 'https://bcrss-backend.onrender.com/api';
   
   static Future<List<dynamic>> getResources() async {
     try {
