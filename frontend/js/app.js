@@ -350,7 +350,7 @@ const APP = {
     try {
       await apiClient.downloadReport();
     } catch (err) {
-      alert('Failed to download report. Please try again later.');
+      alert(err.message || 'Failed to download report. Please try again later.');
     }
   },
 

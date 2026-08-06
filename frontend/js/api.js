@@ -274,24 +274,40 @@ class APIClient {
 
   async downloadReport() {
     const url = `${this.baseURL}/users/download_report/`;
-    const headers = this.getHeaders();
-    
+    const makeRequest = () => fetch(url, { method: 'GET', headers: this.getHeaders() });
+
     try {
-      const response = await fetch(url, { method: 'GET', headers });
-      if (!response.ok) throw new Error('Failed to download report');
-      
+      let response = await makeRequest();
+
+      if (response.status === 401 && this.token) {
+        const refreshed = await this.refreshToken();
+        if (refreshed) {
+          response = await makeRequest();
+        } else {
+          throw new Error('Session expired. Please log in again.');
+        }
+      }
+
+      if (!response.ok) {
+        const contentType = response.headers.get('Content-Type') || '';
+        if (contentType.includes('application/json')) {
+          const errBody = await response.json().catch(() => ({}));
+          throw new Error(errBody.detail || errBody.error || 'Failed to download report');
+        }
+        throw new Error(`Failed to download report (${response.status})`);
+      }
+
       const blob = await response.blob();
       const downloadUrl = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = downloadUrl;
-      
-      // Extract filename from header if possible
+
       const contentDisposition = response.headers.get('Content-Disposition');
       let filename = 'BCRSS_Report.pdf';
       if (contentDisposition && contentDisposition.indexOf('filename=') !== -1) {
         filename = contentDisposition.split('filename=')[1].replace(/"/g, '');
       }
-      
+
       a.download = filename;
       document.body.appendChild(a);
       a.click();
