@@ -154,12 +154,29 @@ class APIClient {
   }
 
   async login(username, password) {
-    const res = await this.request('/auth/login/', { method: 'POST', body: { username, password } });
-    if (res.tokens) {
-      this.token = res.tokens.access;
-      localStorage.setItem('auth_token', this.token);
-      localStorage.setItem('refresh_token', res.tokens.refresh);
+    const res = await this.request('/auth/login/', { 
+      method: 'POST', 
+      body: { username, password } 
+    });
+  
+    // Check both formats - nested and flat
+    const accessToken = res.tokens?.access || res.access;
+    const refreshToken = res.tokens?.refresh || res.refresh;
+  
+    if (accessToken) {
+      this.token = accessToken;
+      localStorage.setItem('auth_token', accessToken);
+      console.log('✅ Token saved:', accessToken.substring(0, 20) + '...');
     }
+  
+    if (refreshToken) {
+      localStorage.setItem('refresh_token', refreshToken);
+    }
+  
+    if (!accessToken) {
+      throw new Error('No access token in login response');
+    }
+  
     return res;
   }
 
