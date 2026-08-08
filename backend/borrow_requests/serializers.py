@@ -17,13 +17,14 @@ class BorrowRequestSerializer(serializers.ModelSerializer):
             'reminder_sent', 'is_disputed', 'dispute_message', 
             'request_date', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'request_date', 'created_at', 'updated_at', 'requester']
+        read_only_fields = ['id', 'request_date', 'created_at', 'updated_at', 'requester', 'owner']
 
 
 class BorrowRequestCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = BorrowRequest
-        fields = ['id', 'item', 'start_date', 'end_date', 'message']
+        fields = ['id', 'item', 'owner', 'start_date', 'end_date', 'message']  # Added owner here!
+        read_only_fields = ['id']
     
     def validate(self, data):
         start_date = data.get('start_date')
