@@ -6,39 +6,39 @@ from resources.serializers import ResourceSerializer
 
 class BorrowRequestSerializer(serializers.ModelSerializer):
     requester = UserSerializer(read_only=True)
-    resource = ResourceSerializer(read_only=True)
-    owner_name = serializers.CharField(source='resource.owner.username', read_only=True)
+    owner = UserSerializer(read_only=True)
+    item = ResourceSerializer(read_only=True)
     
     class Meta:
         model = BorrowRequest
         fields = [
-            'id', 'resource', 'requester', 'owner_name',
-            'start_date', 'return_date', 'status', 'message', 
+            'id', 'item', 'requester', 'owner',
+            'start_date', 'end_date', 'status', 'message', 
             'reminder_sent', 'is_disputed', 'dispute_message', 
-            'created_at', 'updated_at'
+            'request_date', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at', 'requester']
+        read_only_fields = ['id', 'request_date', 'created_at', 'updated_at', 'requester']
 
 
 class BorrowRequestCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = BorrowRequest
-        fields = ['id', 'resource', 'start_date', 'return_date', 'message']
+        fields = ['id', 'item', 'start_date', 'end_date', 'message']
     
     def validate(self, data):
         start_date = data.get('start_date')
-        return_date = data.get('return_date')
-        resource = data.get('resource')
+        end_date = data.get('end_date')
+        item = data.get('item')
         
-        if start_date and return_date and start_date > return_date:
-            raise serializers.ValidationError("Return date must be after start date.")
+        if start_date and end_date and start_date > end_date:
+            raise serializers.ValidationError("End date must be after start date.")
         
         # Check for overlapping approved requests
         overlapping = BorrowRequest.objects.filter(
-            resource=resource,
+            item=item,
             status='Approved',
-            start_date__lte=return_date,
-            return_date__gte=start_date
+            start_date__lte=end_date,
+            end_date__gte=start_date
         )
         if overlapping.exists():
             raise serializers.ValidationError("This item is already booked for the selected dates.")
