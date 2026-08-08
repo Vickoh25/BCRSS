@@ -60,53 +60,53 @@ class BorrowRequestViewSet(viewsets.ModelViewSet):
             )
     
     def create(self, request, *args, **kwargs):
-        """Create a new borrow request - auto-assign requester, owner, and id"""
-        try:
-            from datetime import datetime
-            
-            data = request.data.copy()
-            
-            # Generate a unique ID if not provided
-            if 'id' not in data or not data['id']:
-                data['id'] = f"req-{int(datetime.now().timestamp() * 1000)}"
-            
-            data['requester'] = request.user.id
-            
-            # Get the item and set owner from the resource
-            item_id = data.get('item')
-            if not item_id:
-                return Response(
-                    {'error': 'item field is required'}, 
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            
-            try:
-                item = Resource.objects.get(id=item_id)
-                if not item.owner:
-                    return Response(
-                        {'error': 'Resource has no owner'}, 
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
-                data['owner'] = item.owner.id
-            except Resource.DoesNotExist:
-                return Response(
-                    {'error': f'Resource {item_id} not found'}, 
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            
-            serializer = self.get_serializer(data=data)
-            serializer.is_valid(raise_exception=True)
-            self.perform_create(serializer)
-            
-            # Return with full serializer
-            instance = serializer.instance
-            full_serializer = BorrowRequestSerializer(instance)
-            return Response(full_serializer.data, status=status.HTTP_201_CREATED)
-        except Exception as e:
+    """Create a new borrow request - auto-assign requester, owner, and id"""
+    try:
+        import uuid
+        
+        data = request.data.copy()
+        
+        # Generate a unique ID using UUID if not provided
+        if 'id' not in data or not data['id']:
+            data['id'] = f"req-{str(uuid.uuid4())[:8]}"
+        
+        data['requester'] = request.user.id
+        
+        # Get the item and set owner from the resource
+        item_id = data.get('item')
+        if not item_id:
             return Response(
-                {'error': str(e)}, 
+                {'error': 'item field is required'}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
+        
+        try:
+            item = Resource.objects.get(id=item_id)
+            if not item.owner:
+                return Response(
+                    {'error': 'Resource has no owner'}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            data['owner'] = item.owner.id
+        except Resource.DoesNotExist:
+            return Response(
+                {'error': f'Resource {item_id} not found'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        
+        # Return with full serializer
+        instance = serializer.instance
+        full_serializer = BorrowRequestSerializer(instance)
+        return Response(full_serializer.data, status=status.HTTP_201_CREATED)
+    except Exception as e:
+        return Response(
+            {'error': str(e)}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
     
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def approve(self, request, pk=None):
