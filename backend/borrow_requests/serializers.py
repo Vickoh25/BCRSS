@@ -3,6 +3,7 @@ from .models import BorrowRequest
 from users.serializers import UserSerializer
 from resources.serializers import ResourceSerializer
 
+
 class BorrowRequestSerializer(serializers.ModelSerializer):
     requester = UserSerializer(read_only=True)
     resource = ResourceSerializer(read_only=True)
