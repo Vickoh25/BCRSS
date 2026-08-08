@@ -5,13 +5,13 @@ from resources.serializers import ResourceSerializer
 
 class BorrowRequestSerializer(serializers.ModelSerializer):
     requester = UserSerializer(read_only=True)
-    resource_owner = serializers.CharField(source='resource.owner.username', read_only=True)
     resource = ResourceSerializer(read_only=True)
+    owner_name = serializers.CharField(source='resource.owner.username', read_only=True)
     
     class Meta:
         model = BorrowRequest
         fields = [
-            'id', 'resource', 'requester', 'resource_owner', 
+            'id', 'resource', 'requester', 'owner_name',
             'start_date', 'return_date', 'status', 'message', 
             'reminder_sent', 'is_disputed', 'dispute_message', 
             'created_at', 'updated_at'
@@ -26,19 +26,19 @@ class BorrowRequestCreateSerializer(serializers.ModelSerializer):
     
     def validate(self, data):
         start_date = data.get('start_date')
-        return_date = data.get('return_date')  # Changed from end_date
-        resource = data.get('resource')  # Changed from item
+        return_date = data.get('return_date')
+        resource = data.get('resource')
         
         if start_date and return_date and start_date > return_date:
             raise serializers.ValidationError("Return date must be after start date.")
         
         # Check for overlapping approved requests
-        overlapping_requests = BorrowRequest.objects.filter(
-            resource=resource,  # Changed from item
+        overlapping = BorrowRequest.objects.filter(
+            resource=resource,
             status='Approved',
-            start_date__lte=return_date,  # Changed from end_date
-            return_date__gte=start_date  # Changed from end_date
+            start_date__lte=return_date,
+            return_date__gte=start_date
         )
-        if overlapping_requests.exists():
+        if overlapping.exists():
             raise serializers.ValidationError("This item is already booked for the selected dates.")
         return data
