@@ -555,8 +555,8 @@ function renderOldHomePage(state) {
             <div class="footer-heading">Contact</div>
             <ul class="footer-links">
               <li><a href="#">UEAB, Nandi County</a></li>
-              <li><a href="#">bcrss@baraton.ac.ke</a></li>
-              <li><a href="#">+254 712 345678</a></li>
+              <li><a href="#">svicon@ueab.ac.ke</a></li>
+              <li><a href="#">+254 746434541</a></li>
             </ul>
           </div>
         </div>
@@ -805,7 +805,7 @@ function renderLandingPage(state) {
             <div class="footer-heading">Contact</div>
             <ul class="footer-links">
               <li><a href="#">UEAB, Nandi County</a></li>
-              <li><a href="#">bcrss@baraton.ac.ke</a></li>
+              <li><a href="#">svicon@ueab.ac.ke</a></li>
               <li><a href="#">+254 712 345678</a></li>
             </ul>
           </div>
