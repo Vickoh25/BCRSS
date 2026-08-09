@@ -17,7 +17,7 @@ class BorrowRequestSerializer(serializers.ModelSerializer):
             'reminder_sent', 'is_disputed', 'dispute_message', 
             'request_date', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'request_date', 'created_at', 'updated_at', 'requester', 'owner']
+        read_only_fields = ['id', 'status', 'request_date', 'created_at', 'updated_at', 'requester', 'owner']
 
 
 class BorrowRequestCreateSerializer(serializers.ModelSerializer):
