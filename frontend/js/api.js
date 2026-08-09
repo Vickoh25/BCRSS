@@ -75,6 +75,7 @@ class APIClient {
     return {
       ...req,
       itemTitle: req.item ? req.item.title : 'Deleted Item',
+      requesterId: req.requester ? req.requester.id : null,
       requesterName: req.requester ? (req.requester.first_name ? `${req.requester.first_name} ${req.requester.last_name}` : req.requester.username) : 'Unknown',
       requesterContact: req.requester ? req.requester.contact : '',
       ownerId: req.owner ? req.owner.id : null,
