@@ -64,15 +64,14 @@ class BorrowRequestViewSet(viewsets.ModelViewSet):
         """Create a new borrow request - auto-assign requester, owner, and id"""
         try:
             import uuid
-            
+        
+            # Generate ID BEFORE copying data
+            unique_id = f"req-{uuid.uuid4().hex[:12]}"
+        
             data = request.data.copy()
-            
-            # Generate a unique ID using UUID if not provided
-            if 'id' not in data or not data['id']:
-                data['id'] = f"req-{str(uuid.uuid4())}"
-            
+            data['id'] = unique_id  # Always set a new ID
             data['requester'] = request.user.id
-            
+        
             # Get the item and set owner from the resource
             item_id = data.get('item')
             if not item_id:
@@ -80,7 +79,6 @@ class BorrowRequestViewSet(viewsets.ModelViewSet):
                     {'error': 'item field is required'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-
             try:
                 item = Resource.objects.get(id=item_id)
                 if not item.owner:
@@ -99,12 +97,11 @@ class BorrowRequestViewSet(viewsets.ModelViewSet):
                     {'error': f'Resource {item_id} not found'}, 
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            
+        
             serializer = self.get_serializer(data=data)
             serializer.is_valid(raise_exception=True)
             self.perform_create(serializer)
-            
-            # Return with full serializer
+        
             instance = serializer.instance
             full_serializer = BorrowRequestSerializer(instance)
             return Response(full_serializer.data, status=status.HTTP_201_CREATED)
