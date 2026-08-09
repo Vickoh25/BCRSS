@@ -69,7 +69,7 @@ class BorrowRequestViewSet(viewsets.ModelViewSet):
             
             # Generate a unique ID using UUID if not provided
             if 'id' not in data or not data['id']:
-                data['id'] = f"req-{str(uuid.uuid4())[:8]}"
+                data['id'] = f"req-{str(uuid.uuid4())}"
             
             data['requester'] = request.user.id
             
