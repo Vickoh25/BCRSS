@@ -1222,6 +1222,19 @@ svg.icon, svg[class*="w-"], svg[class*="h-"] {
   box-shadow: var(--shadow-card);
 }
 
+/* Add these new rules to constrain icons */
+.job-card svg {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+}
+
+.job-card .icon {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+}
+
 .job-card:hover {
   border-color: var(--green-200);
   box-shadow: var(--shadow-card-hover);
