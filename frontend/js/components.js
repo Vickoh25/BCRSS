@@ -91,7 +91,7 @@ function renderItemImage(imageCode, category, sizeClass) {
 // ==================== HEADER ====================
 function renderHeader(state) {
   const { currentUser, currentTab } = state;
-  const navItems = currentUser ? [
+  const navItems = [
     { id: 'home', label: 'Home' },
     { id: 'resources', label: 'Resources' },
     { id: 'jobs', label: 'Jobs' },
