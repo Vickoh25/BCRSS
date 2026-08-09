@@ -60,7 +60,7 @@ class BorrowRequestViewSet(viewsets.ModelViewSet):
             )
     
     def create(self, request, *args, **kwargs):
-    """Create a new borrow request - auto-assign requester, owner, and id"""
+        """Create a new borrow request - auto-assign requester, owner, and id"""
         try:
             import uuid
             
