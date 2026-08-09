@@ -132,7 +132,8 @@ class APIClient {
 
       if (!response.ok) {
         const errBody = await response.json().catch(() => ({ detail: 'Unknown error' }));
-        throw new Error(`API Error ${response.status}: ${errBody.detail || errBody.non_field_errors?.join(', ') || response.statusText}`);
+        const errMsg = errBody.detail || errBody.error || errBody.non_field_errors?.join(', ') || response.statusText;
+        throw new Error(`API Error ${response.status}: ${errMsg}`);
       }
       if (response.status === 204) return {};
       return await response.json();
