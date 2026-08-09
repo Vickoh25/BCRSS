@@ -61,52 +61,57 @@ class BorrowRequestViewSet(viewsets.ModelViewSet):
     
     def create(self, request, *args, **kwargs):
     """Create a new borrow request - auto-assign requester, owner, and id"""
-    try:
-        import uuid
-        
-        data = request.data.copy()
-        
-        # Generate a unique ID using UUID if not provided
-        if 'id' not in data or not data['id']:
-            data['id'] = f"req-{str(uuid.uuid4())[:8]}"
-        
-        data['requester'] = request.user.id
-        
-        # Get the item and set owner from the resource
-        item_id = data.get('item')
-        if not item_id:
-            return Response(
-                {'error': 'item field is required'}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
         try:
-            item = Resource.objects.get(id=item_id)
-            if not item.owner:
+            import uuid
+            
+            data = request.data.copy()
+            
+            # Generate a unique ID using UUID if not provided
+            if 'id' not in data or not data['id']:
+                data['id'] = f"req-{str(uuid.uuid4())[:8]}"
+            
+            data['requester'] = request.user.id
+            
+            # Get the item and set owner from the resource
+            item_id = data.get('item')
+            if not item_id:
                 return Response(
-                    {'error': 'Resource has no owner'}, 
+                    {'error': 'item field is required'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            data['owner'] = item.owner.id
-        except Resource.DoesNotExist:
+
+            try:
+                item = Resource.objects.get(id=item_id)
+                if not item.owner:
+                    return Response(
+                        {'error': 'Resource has no owner'}, 
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                if item.owner == request.user:
+                    return Response(
+                        {'error': 'You cannot borrow your own item'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                data['owner'] = item.owner.id
+            except Resource.DoesNotExist:
+                return Response(
+                    {'error': f'Resource {item_id} not found'}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            serializer = self.get_serializer(data=data)
+            serializer.is_valid(raise_exception=True)
+            self.perform_create(serializer)
+            
+            # Return with full serializer
+            instance = serializer.instance
+            full_serializer = BorrowRequestSerializer(instance)
+            return Response(full_serializer.data, status=status.HTTP_201_CREATED)
+        except Exception as e:
             return Response(
-                {'error': f'Resource {item_id} not found'}, 
+                {'error': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
-        serializer = self.get_serializer(data=data)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        
-        # Return with full serializer
-        instance = serializer.instance
-        full_serializer = BorrowRequestSerializer(instance)
-        return Response(full_serializer.data, status=status.HTTP_201_CREATED)
-    except Exception as e:
-        return Response(
-            {'error': str(e)}, 
-            status=status.HTTP_400_BAD_REQUEST
-        )
     
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def approve(self, request, pk=None):
@@ -127,6 +132,10 @@ class BorrowRequestViewSet(viewsets.ModelViewSet):
         
         borrow_request.status = 'Approved'
         borrow_request.save()
+
+        item = borrow_request.item
+        item.status = 'Borrowed'
+        item.save()
         
         serializer = BorrowRequestSerializer(borrow_request)
         return Response(serializer.data)
@@ -153,7 +162,119 @@ class BorrowRequestViewSet(viewsets.ModelViewSet):
         
         serializer = BorrowRequestSerializer(borrow_request)
         return Response(serializer.data)
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def mark_returned(self, request, pk=None):
+        """Mark an approved borrow request as returned"""
+        borrow_request = self.get_object()
+        
+        if borrow_request.requester != request.user and borrow_request.owner != request.user:
+            return Response(
+                {'error': 'Only the requester or owner can mark this as returned'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        if borrow_request.status != 'Approved':
+            return Response(
+                {'error': f'Cannot mark a {borrow_request.status} request as returned'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        borrow_request.status = 'Returned'
+        borrow_request.save()
+        
+        item = borrow_request.item
+        item.status = 'Available'
+        item.save()
+        
+        serializer = BorrowRequestSerializer(borrow_request)
+        return Response(serializer.data)
     
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def send_reminder(self, request, pk=None):
+        """Send a reminder to the borrower (owner only)"""
+        borrow_request = self.get_object()
+
+        if borrow_request.owner != request.user:
+            return Response(
+                {'error': 'Only the owner can send a reminder'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        if borrow_request.status != 'Approved':
+            return Response(
+                {'error': 'Reminders can only be sent for approved requests'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        borrow_request.reminder_sent = True
+        borrow_request.save()
+        
+        serializer = BorrowRequestSerializer(borrow_request)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def raise_dispute(self, request, pk=None):
+        """Raise a dispute on a borrow request"""
+        borrow_request = self.get_object()
+        
+        if borrow_request.requester != request.user and borrow_request.owner != request.user:
+            return Response(
+                {'error': 'Only the requester or owner can raise a dispute'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        message = request.data.get('message', '').strip()
+        if not message:
+            return Response(
+                {'error': 'A dispute message is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        borrow_request.is_disputed = True
+        borrow_request.dispute_message = message
+        borrow_request.save()
+        
+        serializer = BorrowRequestSerializer(borrow_request)
+        return Response(serializer.data)
+    
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def resolve_dispute(self, request, pk=None):
+        """Resolve a dispute (admin only)"""
+        if getattr(request.user, 'role', None) != 'Admin':
+            return Response(
+                {'error': 'Only admins can resolve disputes'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        borrow_request = self.get_object()
+        
+        if not borrow_request.is_disputed:
+            return Response(
+                {'error': 'This request has no active dispute'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        new_status = request.data.get('status', 'Returned')
+        if new_status not in dict(BorrowRequest.STATUS_CHOICES):
+            return Response(
+                {'error': f'Invalid status: {new_status}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        borrow_request.is_disputed = False
+        borrow_request.dispute_message = None
+        borrow_request.status = new_status
+        borrow_request.save()
+        
+        if new_status == 'Returned':
+            item = borrow_request.item
+            item.status = 'Available'
+            item.save()
+        
+        serializer = BorrowRequestSerializer(borrow_request)
+        return Response(serializer.data)
+        
     def destroy(self, request, *args, **kwargs):
         """Only allow deletion by requester"""
         instance = self.get_object()
