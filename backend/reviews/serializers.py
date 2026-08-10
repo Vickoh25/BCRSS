@@ -5,13 +5,14 @@ from users.serializers import UserSerializer
 class ReviewSerializer(serializers.ModelSerializer):
     reviewer = UserSerializer(read_only=True)
     target_user = UserSerializer(read_only=True)
+    resource_title = serializers.CharField(source='resource.title', read_only=True, default=None)
     
     class Meta:
         model = Review
-        fields = ['id', 'rating', 'comment', 'reviewer', 'target_user', 'reviewer_role', 'date', 'created_at', 'updated_at']
+        fields = ['id', 'rating', 'comment', 'reviewer', 'target_user', 'reviewer_role', 'resource', 'resource_title', 'date', 'created_at', 'updated_at']
         read_only_fields = ['id', 'date', 'created_at', 'updated_at']
 
 class ReviewCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Review
-        fields = ['id', 'rating', 'comment', 'target_user', 'reviewer_role']
+        fields = ['id', 'rating', 'comment', 'target_user', 'reviewer_role', 'resource']

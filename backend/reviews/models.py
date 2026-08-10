@@ -5,8 +5,6 @@ class Review(models.Model):
     ROLE_CHOICES = (
         ('Lender', 'Lender'),
         ('Borrower', 'Borrower'),
-        ('Employer', 'Employer'),
-        ('Worker', 'Worker'),
     )
     
     id = models.CharField(max_length=50, primary_key=True, unique=True)
@@ -14,7 +12,13 @@ class Review(models.Model):
     comment = models.TextField()
     reviewer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reviews_given')
     target_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reviews_received')
-    reviewer_role = models.CharField(max_length=20, choices=ROLE_CHOICES)
+    reviewer_role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='Borrower')
+    resource = models.ForeignKey(
+        'resources.Resource',
+        on_delete=models.CASCADE,
+        related_name='reviews',
+        help_text='The resource the review is about. Borrowers review the resource owner they borrowed from.'
+    )
     date = models.DateField(auto_now_add=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -24,7 +28,7 @@ class Review(models.Model):
         verbose_name = 'Review'
         verbose_name_plural = 'Reviews'
         ordering = ['-created_at']
-        unique_together = ('reviewer', 'target_user')
+        unique_together = ('reviewer', 'target_user', 'resource')
 
     def __str__(self):
         return f"{self.reviewer.username} -> {self.target_user.username} ({self.rating} stars)"

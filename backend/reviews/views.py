@@ -12,7 +12,7 @@ class ReviewViewSet(viewsets.ModelViewSet):
     serializer_class = ReviewSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
-    filterset_fields = ['rating', 'reviewer_role', 'target_user']
+    filterset_fields = ['rating', 'reviewer_role', 'target_user', 'resource']
     ordering_fields = ['created_at', 'rating']
     ordering = ['-created_at']
     
@@ -64,12 +64,16 @@ class ReviewViewSet(viewsets.ModelViewSet):
     
     @action(detail=False, methods=['get'])
     def user_rating(self, request):
-        """Get average rating for a user"""
+        """Get average rating for a user, optionally scoped to a resource"""
         user_id = request.query_params.get('user_id')
         if not user_id:
             return Response({'detail': 'user_id parameter required'}, status=status.HTTP_400_BAD_REQUEST)
         
         reviews = Review.objects.filter(target_user_id=user_id)
+        resource_id = request.query_params.get('resource_id')
+        if resource_id:
+            reviews = reviews.filter(resource_id=resource_id)
+        
         if not reviews.exists():
             return Response({'average_rating': 0, 'count': 0})
         
@@ -78,6 +82,17 @@ class ReviewViewSet(viewsets.ModelViewSet):
             'average_rating': round(avg_rating, 2),
             'count': len(reviews)
         })
+    
+    @action(detail=False, methods=['get'])
+    def resource_reviews(self, request):
+        """Get all borrower reviews for a specific resource"""
+        resource_id = request.query_params.get('resource_id')
+        if not resource_id:
+            return Response({'detail': 'resource_id parameter required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        reviews = Review.objects.filter(resource_id=resource_id).order_by('-created_at')
+        serializer = ReviewSerializer(reviews, many=True)
+        return Response(serializer.data)
     
     @action(detail=True, methods=['delete'], permission_classes=[IsAuthenticated])
     def delete_review(self, request, pk=None):

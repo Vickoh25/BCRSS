@@ -1179,7 +1179,9 @@ function renderDashboardRequests(state) {
               </td>
               <td style="text-align:right">
                 <div style="display:flex;justify-content:flex-end;gap:var(--space-2)">
-                  ${isOwner && req.status === 'Pending' ? `
+                  ${!isOwner && req.status === 'Returned' ? `
+                    <button class="btn btn-sm btn-outline" onclick="APP.openReviewModal('${req.ownerId}', '${req.ownerName || 'Resource owner'}', 'Borrower', '${req.itemId}') ;event.stopPropagation()">Review Resource</button>
+                  ` : isOwner && req.status === 'Pending' ? `
                     <button class="btn btn-sm" style="background:var(--color-primary);color:white" onclick="APP.approveRequest('${req.id}');event.stopPropagation()">Approve</button>
                     <button class="btn btn-sm btn-secondary" onclick="APP.declineRequest('${req.id}');event.stopPropagation()">Decline</button>
                   ` : isOwner && req.status === 'Approved' ? `
@@ -1268,7 +1270,7 @@ function renderDashboardApplications(state) {
               <td style="color:var(--color-text-tertiary);font-size:var(--fs-sm);max-width:360px;white-space:normal">${app.pitch}</td>
               <td><span class="badge badge-pending">${app.status}</span></td>
               <td style="text-align:right">
-                <button class="btn btn-sm btn-outline" onclick="APP.openReviewModal('${personId}', '${personName.replace(/'/g, "\\'")}', '${role}')">Review</button>
+                <span style="font-size:var(--fs-sm);color:var(--color-text-tertiary)">Job applications do not receive reviews</span>
               </td>
             </tr>`;
           }).join('')}

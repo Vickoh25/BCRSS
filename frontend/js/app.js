@@ -449,13 +449,13 @@ const APP = {
     }
   },
 
-  openReviewModal(userId, userName, role = 'Borrower') {
+  openReviewModal(userId, userName, role = 'Borrower', resourceId = null) {
     if (!this.state.currentUser) {
       this.openModal('login');
       return;
     }
     if (!userId || userId === this.state.currentUser.id) return;
-    this.state.reviewTarget = { userId, userName, role };
+    this.state.reviewTarget = { userId, userName, role, resourceId };
     this.state.activeModal = 'review';
     this.render();
   },
@@ -610,6 +610,7 @@ const APP = {
       target_user: target.userId,
       rating: Number(document.getElementById('review-rating').value),
       reviewer_role: document.getElementById('review-role').value,
+      resource: target.resourceId,
       comment: document.getElementById('review-comment').value.trim()
     };
 
