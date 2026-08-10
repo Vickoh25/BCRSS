@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import JobOpportunity
+from .models import JobOpportunity, JobApplication
 
 @admin.register(JobOpportunity)
 class JobOpportunityAdmin(admin.ModelAdmin):
@@ -7,3 +7,11 @@ class JobOpportunityAdmin(admin.ModelAdmin):
     list_filter = ('category', 'status', 'created_at')
     search_fields = ('title', 'description', 'posted_by__username')
     readonly_fields = ('created_at', 'updated_at', 'posted_date')
+
+
+@admin.register(JobApplication)
+class JobApplicationAdmin(admin.ModelAdmin):
+    list_display = ('job', 'applicant', 'status', 'applied_at')
+    list_filter = ('status', 'applied_at')
+    search_fields = ('job__title', 'applicant__username', 'pitch')
+    readonly_fields = ('applied_at', 'updated_at')

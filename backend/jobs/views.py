@@ -3,8 +3,9 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django_filters.rest_framework import DjangoFilterBackend
-from .models import JobOpportunity
-from .serializers import JobOpportunitySerializer, JobOpportunityCreateSerializer
+from django.db import IntegrityError
+from .models import JobOpportunity, JobApplication
+from .serializers import JobOpportunitySerializer, JobOpportunityCreateSerializer, JobApplicationSerializer, JobApplicationCreateSerializer
 
 class JobOpportunityViewSet(viewsets.ModelViewSet):
     queryset = JobOpportunity.objects.all()
@@ -58,6 +59,37 @@ class JobOpportunityViewSet(viewsets.ModelViewSet):
         serializer = JobOpportunitySerializer(jobs, many=True)
         return Response(serializer.data)
     
+    @action(detail=True, methods=['post'])
+    def apply(self, request, pk=None):
+        """Apply for a job opportunity"""
+        job = self.get_object()
+        if job.posted_by == request.user:
+            return Response({'detail': 'You cannot apply to your own job.'}, status=status.HTTP_400_BAD_REQUEST)
+        if job.status != 'Open':
+            return Response({'detail': 'This job is not open for applications.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = JobApplicationCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            serializer.save(job=job, applicant=request.user)
+        except IntegrityError:
+            return Response({'detail': 'You have already applied for this job.'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(JobApplicationSerializer(serializer.instance).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=False, methods=['get'])
+    def my_applications(self, request):
+        """Get applications submitted by current user"""
+        applications = JobApplication.objects.filter(applicant=request.user)
+        serializer = JobApplicationSerializer(applications, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def received_applications(self, request):
+        """Get applications for jobs posted by current user"""
+        applications = JobApplication.objects.filter(job__posted_by=request.user)
+        serializer = JobApplicationSerializer(applications, many=True)
+        return Response(serializer.data)
+
     @action(detail=True, methods=['post'])
     def mark_filled(self, request, pk=None):
         """Mark job as filled"""

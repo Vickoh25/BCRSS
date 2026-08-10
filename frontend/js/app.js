@@ -10,6 +10,7 @@ const APP = {
     users: [],
     resources: [],
     jobs: [],
+    jobApplications: [],
     requests: [],
     reviews: [],
     currentUser: null,
@@ -31,9 +32,10 @@ const APP = {
     // UI - Dropdowns & Modals
     userDropdownOpen: false,
     mobileMenuOpen: false,
-    activeModal: null,     // null, 'share', 'postJob', 'borrow', 'apply'
+    activeModal: null,     // null, 'share', 'postJob', 'borrow', 'apply', 'review'
     borrowItemTarget: null,
     applyJobTarget: null,
+    reviewTarget: null,
   },
 
   // ==================== INITIALISATION ====================
@@ -44,6 +46,7 @@ const APP = {
       localStorage.removeItem('bcrss_users');
       localStorage.removeItem('bcrss_resources');
       localStorage.removeItem('bcrss_jobs');
+      localStorage.removeItem('bcrss_job_applications');
       localStorage.removeItem('bcrss_requests');
       localStorage.removeItem('bcrss_reviews');
       console.log('No auth token — cleared stale localStorage. Login/register to begin.');
@@ -98,22 +101,34 @@ const APP = {
     // If logged in, fetch personal data
     if (s.currentUser) {
       try {
-        const [myReqs, recReqs] = await Promise.all([
+        const [myReqs, recReqs, sentApps, receivedApps, myReviews, receivedReviews] = await Promise.all([
           apiClient.getMyBorrowRequests(),
-          apiClient.getReceivedBorrowRequests()
+          apiClient.getReceivedBorrowRequests(),
+          apiClient.getMyJobApplications(),
+          apiClient.getReceivedJobApplications(),
+          apiClient.getMyReviews(),
+          apiClient.getReceivedReviews()
         ]);
         s.requests = [...myReqs, ...recReqs];
+        s.jobApplications = [...sentApps, ...receivedApps];
+        s.reviews = [...myReviews, ...receivedReviews];
       } catch (e) {
-        console.warn('Personal data fetch failed, requests will be empty');
+        console.warn('Personal data fetch failed, dashboard data will be empty');
         s.requests = [];
+        s.jobApplications = [];
       }
 
       // Admin: fetch all users
       if (s.currentUser.role === 'Admin') {
         try {
-          s.users = await apiClient.listUsers();
+          const [users, allReviews] = await Promise.all([
+            apiClient.listUsers(),
+            apiClient.listReviews()
+          ]);
+          s.users = users;
+          s.reviews = allReviews;
         } catch (e) {
-          console.warn('User list fetch failed');
+          console.warn('Admin data fetch failed');
         }
       }
     }
@@ -122,8 +137,8 @@ const APP = {
   loadFromStorage() {
     const s = this.state;
     try {
-      const keys = ['bcrss_users', 'bcrss_current_user', 'bcrss_resources', 'bcrss_jobs', 'bcrss_requests', 'bcrss_reviews'];
-      const [users, currentUser, resources, jobs, requests, reviews] = keys.map(k => {
+      const keys = ['bcrss_users', 'bcrss_current_user', 'bcrss_resources', 'bcrss_jobs', 'bcrss_job_applications', 'bcrss_requests', 'bcrss_reviews'];
+      const [users, currentUser, resources, jobs, jobApplications, requests, reviews] = keys.map(k => {
         const saved = localStorage.getItem(k);
         return saved ? JSON.parse(saved) : null;
       });
@@ -131,6 +146,7 @@ const APP = {
       if (currentUser) s.currentUser = currentUser;
       if (resources) s.resources = resources;
       if (jobs) s.jobs = jobs;
+      if (jobApplications) s.jobApplications = jobApplications;
       if (requests) s.requests = requests;
       if (reviews) s.reviews = reviews;
     } catch (e) {
@@ -145,6 +161,7 @@ const APP = {
       localStorage.setItem('bcrss_current_user', JSON.stringify(s.currentUser));
       localStorage.setItem('bcrss_resources', JSON.stringify(s.resources));
       localStorage.setItem('bcrss_jobs', JSON.stringify(s.jobs));
+      localStorage.setItem('bcrss_job_applications', JSON.stringify(s.jobApplications));
       localStorage.setItem('bcrss_requests', JSON.stringify(s.requests));
       localStorage.setItem('bcrss_reviews', JSON.stringify(s.reviews));
     } catch (e) {
@@ -233,6 +250,12 @@ const APP = {
         container.innerHTML = renderLoginModal(s);
       } else {
         container.innerHTML = renderApplyModal(s);
+      }
+    } else if (s.activeModal === 'review' && s.reviewTarget) {
+      if (!s.currentUser) {
+        container.innerHTML = renderLoginModal(s);
+      } else {
+        container.innerHTML = renderReviewModal(s);
       }
     } else if (s.activeModal === 'login') {
       container.innerHTML = renderLoginModal(s);
@@ -378,6 +401,7 @@ const APP = {
     this.state.currentTab = 'home';
     this.state.resources = [];
     this.state.jobs = [];
+    this.state.jobApplications = [];
     this.state.requests = [];
     this.state.users = [];
     this.state.reviews = [];
@@ -408,6 +432,7 @@ const APP = {
     this.state.activeModal = null;
     this.state.borrowItemTarget = null;
     this.state.applyJobTarget = null;
+    this.state.reviewTarget = null;
     this.render();
   },
 
@@ -422,6 +447,17 @@ const APP = {
       this.state.activeModal = 'borrow';
       this.render();
     }
+  },
+
+  openReviewModal(userId, userName, role = 'Borrower') {
+    if (!this.state.currentUser) {
+      this.openModal('login');
+      return;
+    }
+    if (!userId || userId === this.state.currentUser.id) return;
+    this.state.reviewTarget = { userId, userName, role };
+    this.state.activeModal = 'review';
+    this.render();
   },
 
   openApplyModal(jobId) {
@@ -540,8 +576,9 @@ const APP = {
   },
 
   // ==================== APPLY JOB HANDLER ====================
-  handleApplyJob(e) {
+  async handleApplyJob(e) {
     e.preventDefault();
+    if (!this.state.currentUser) return APP.openModal('login');
     const job = this.state.applyJobTarget;
     if (!job) return;
 
@@ -551,10 +588,45 @@ const APP = {
       return;
     }
 
-    this.state.activeModal = null;
-    this.state.applyJobTarget = null;
-    alert(`Application submitted! A message has been sent to ${job.postedBy} with your summary:\n"${pitch}"`);
-    this.render();
+    try {
+      await apiClient.applyForJob(job.id, { id: `app-${Date.now()}`, pitch });
+      this.state.activeModal = null;
+      this.state.applyJobTarget = null;
+      alert(`Application submitted to ${job.postedBy}. They can now see it in their Dashboard.`);
+      this.init();
+    } catch (err) {
+      alert(err.message || 'Failed to submit application.');
+    }
+  },
+
+  async handleCreateReview(e) {
+    e.preventDefault();
+    if (!this.state.currentUser) return APP.openModal('login');
+    const target = this.state.reviewTarget;
+    if (!target) return;
+
+    const data = {
+      id: `rev-${Date.now()}`,
+      target_user: target.userId,
+      rating: Number(document.getElementById('review-rating').value),
+      reviewer_role: document.getElementById('review-role').value,
+      comment: document.getElementById('review-comment').value.trim()
+    };
+
+    if (!data.comment) {
+      alert('Please write a short review.');
+      return;
+    }
+
+    try {
+      await apiClient.createReview(data);
+      this.state.activeModal = null;
+      this.state.reviewTarget = null;
+      alert(`Review submitted for ${target.userName}.`);
+      this.init();
+    } catch (err) {
+      alert(err.message || 'Failed to submit review.');
+    }
   },
 
   // ==================== DASHBOARD ACTIONS ====================

@@ -1,8 +1,9 @@
-from rest_framework import viewsets, status, filters
+from rest_framework import viewsets, status, filters, serializers
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
+from django.db import IntegrityError
 from .models import Review
 from .serializers import ReviewSerializer, ReviewCreateSerializer
 
@@ -21,7 +22,10 @@ class ReviewViewSet(viewsets.ModelViewSet):
         return ReviewSerializer
     
     def perform_create(self, serializer):
-        serializer.save(reviewer=self.request.user)
+        try:
+            serializer.save(reviewer=self.request.user)
+        except IntegrityError:
+            raise serializers.ValidationError({'detail': 'You have already reviewed this user.'})
 
     def _can_manage(self, request, review):
         return review.reviewer == request.user or request.user.is_admin()

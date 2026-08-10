@@ -996,6 +996,8 @@ function renderJobsPage(state) {
 
 function renderJobCard(job, currentUser) {
   const isOwner = currentUser && job.postedById === currentUser.id;
+  const hasApplied = currentUser && Array.isArray(APP.state.jobApplications) &&
+    APP.state.jobApplications.some(app => app.jobId === job.id && app.applicantId === currentUser.id);
   const badgeColors = {
     'Skilled Trade': 'background:#eef2ff;color:#4f46e5',
     'Farm Work': 'background:var(--color-success-bg);color:var(--color-success)',
@@ -1021,12 +1023,17 @@ function renderJobCard(job, currentUser) {
       <div style="display:flex;align-items:center;gap:var(--space-2);justify-content:flex-end">${icon('user', 'w-3 h-3')}<span>By ${isOwner ? 'You' : job.postedBy}</span></div>
     </div>
 
-    ${job.status === 'Open' ? `
+    ${job.status === 'Open' && !isOwner ? `
       <button style="width:100%;margin-top:var(--space-4);padding:var(--space-3);text-align:center;font-size:var(--fs-sm);font-weight:600;border-radius:var(--radius-md);border:1px solid var(--color-border);background:transparent;color:var(--color-text-secondary);cursor:pointer;transition:all var(--duration-fast) ease"
         onmouseover="this.style.borderColor='var(--color-primary)';this.style.color='var(--color-primary)'"
         onmouseout="this.style.borderColor='';this.style.color=''"
-        onclick="APP.openApplyModal('${job.id}')">
-        Apply Now
+        onclick="${hasApplied ? '' : `APP.openApplyModal('${job.id}')`}" ${hasApplied ? 'disabled' : ''}>
+        ${hasApplied ? 'Application Sent' : 'Apply Now'}
+      </button>
+    ` : job.status === 'Open' && isOwner ? `
+      <button style="width:100%;margin-top:var(--space-4);padding:var(--space-3);text-align:center;font-size:var(--fs-sm);font-weight:600;border-radius:var(--radius-md);border:1px solid var(--color-border);background:transparent;color:var(--color-text-secondary);cursor:pointer"
+        onclick="APP.setDashboardTab('applications');APP.changeTab('dashboard')">
+        View Applications
       </button>
     ` : `
       <div style="width:100%;margin-top:var(--space-4);padding:var(--space-3);text-align:center;font-size:var(--fs-sm);font-weight:600;border-radius:var(--radius-md);background:var(--neutral-100);color:var(--color-text-tertiary)">Position Filled</div>
@@ -1036,7 +1043,7 @@ function renderJobCard(job, currentUser) {
 
 // ==================== DASHBOARD PAGE ====================
 function renderDashboardPage(state) {
-  const { currentUser, requests, resources, jobs, reviews, dashboardSubTab } = state;
+  const { currentUser, requests, resources, jobs, reviews, jobApplications, dashboardSubTab } = state;
   if (!currentUser) {
     return `<div class="page-section" style="min-height:100vh"><div class="container">
       <div class="empty-state">
@@ -1051,6 +1058,8 @@ function renderDashboardPage(state) {
   const myResources = resources.filter(r => r.ownerId === currentUser.id);
   const myJobs = jobs.filter(j => j.postedById === currentUser.id);
   const activeRequests = requests.filter(r => r.status === 'Pending' || r.status === 'Approved');
+  const receivedApplications = jobApplications.filter(app => app.employerId === currentUser.id);
+  const receivedReviews = reviews.filter(r => r.target_user && r.target_user.id === currentUser.id);
 
   return `<div class="page-section" style="min-height:100vh">
     <div class="container">
@@ -1098,8 +1107,8 @@ function renderDashboardPage(state) {
           <div style="display:flex;align-items:center;gap:var(--space-3)">
             <div class="metric-icon" style="background:var(--color-success-bg);color:var(--color-success)">${icon('star', 'w-5 h-5')}</div>
             <div>
-              <div style="font-size:var(--fs-2xl);font-weight:700;color:var(--color-text);line-height:1">${reviews.length}</div>
-              <div style="font-size:var(--fs-xs);color:var(--color-text-tertiary)">Reviews</div>
+              <div style="font-size:var(--fs-2xl);font-weight:700;color:var(--color-text);line-height:1">${receivedReviews.length}</div>
+              <div style="font-size:var(--fs-xs);color:var(--color-text-tertiary)">Reviews Received</div>
             </div>
           </div>
         </div>
@@ -1110,11 +1119,15 @@ function renderDashboardPage(state) {
         <button class="sub-tab-btn ${dashboardSubTab === 'requests' ? 'active' : ''}" onclick="APP.setDashboardTab('requests')">Requests</button>
         <button class="sub-tab-btn ${dashboardSubTab === 'items' ? 'active' : ''}" onclick="APP.setDashboardTab('items')">My Items</button>
         <button class="sub-tab-btn ${dashboardSubTab === 'jobs' ? 'active' : ''}" onclick="APP.setDashboardTab('jobs')">My Jobs</button>
+        <button class="sub-tab-btn ${dashboardSubTab === 'applications' ? 'active' : ''}" onclick="APP.setDashboardTab('applications')">Applications (${receivedApplications.length})</button>
+        <button class="sub-tab-btn ${dashboardSubTab === 'reviews' ? 'active' : ''}" onclick="APP.setDashboardTab('reviews')">Reviews</button>
       </div>
 
       ${dashboardSubTab === 'requests' ? renderDashboardRequests(state) : ''}
       ${dashboardSubTab === 'items' ? renderDashboardItems(state) : ''}
       ${dashboardSubTab === 'jobs' ? renderDashboardJobs(state) : ''}
+      ${dashboardSubTab === 'applications' ? renderDashboardApplications(state) : ''}
+      ${dashboardSubTab === 'reviews' ? renderDashboardReviews(state) : ''}
     </div>
   </div>`;
 }
@@ -1221,6 +1234,82 @@ function renderDashboardJobs(state) {
   return `
   <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:var(--space-6)">
     ${myJobs.map(job => renderJobCard(job, currentUser)).join('')}
+  </div>`;
+}
+
+function renderDashboardApplications(state) {
+  const { currentUser, jobApplications } = state;
+  const received = jobApplications.filter(app => app.employerId === currentUser.id);
+  const sent = jobApplications.filter(app => app.applicantId === currentUser.id);
+  const rows = [...received, ...sent];
+
+  if (rows.length === 0) {
+    return `<div class="empty-state">
+      <div style="width:64px;height:64px;background:var(--neutral-100);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto var(--space-4)">${icon('send', 'w-8 h-8')}</div>
+      <h3 style="font-family:var(--font-serif);font-size:var(--fs-lg);font-weight:700;color:var(--color-text);margin-bottom:var(--space-1)">No job applications yet</h3>
+      <p style="font-size:var(--fs-sm);color:var(--color-text-tertiary);margin-bottom:var(--space-4)">Applications you send or receive will appear here.</p>
+      <button class="btn btn-primary" onclick="APP.changeTab('jobs')">Browse Jobs</button>
+    </div>`;
+  }
+
+  return `<div class="table-container">
+    <div style="overflow-x:auto">
+      <table class="data-table">
+        <thead><tr><th>Job</th><th>Person</th><th>Pitch</th><th>Status</th><th style="text-align:right">Actions</th></tr></thead>
+        <tbody>
+          ${rows.map(app => {
+            const receivedByMe = app.employerId === currentUser.id;
+            const personName = receivedByMe ? app.applicantName : app.employerName;
+            const personId = receivedByMe ? app.applicantId : app.employerId;
+            const role = receivedByMe ? 'Worker' : 'Employer';
+            return `<tr>
+              <td><span style="font-weight:500;color:var(--color-text);font-size:var(--fs-sm)">${app.jobTitle}</span></td>
+              <td style="color:var(--color-text-secondary);font-size:var(--fs-sm)">${personName}</td>
+              <td style="color:var(--color-text-tertiary);font-size:var(--fs-sm);max-width:360px;white-space:normal">${app.pitch}</td>
+              <td><span class="badge badge-pending">${app.status}</span></td>
+              <td style="text-align:right">
+                <button class="btn btn-sm btn-outline" onclick="APP.openReviewModal('${personId}', '${personName.replace(/'/g, "\\'")}', '${role}')">Review</button>
+              </td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+function renderDashboardReviews(state) {
+  const { currentUser, reviews } = state;
+  const received = reviews.filter(r => r.target_user && r.target_user.id === currentUser.id);
+  const given = reviews.filter(r => r.reviewer && r.reviewer.id === currentUser.id);
+  const all = [...received, ...given];
+
+  if (all.length === 0) {
+    return `<div class="empty-state">
+      <div style="width:64px;height:64px;background:var(--neutral-100);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto var(--space-4)">${icon('star', 'w-8 h-8')}</div>
+      <h3 style="font-family:var(--font-serif);font-size:var(--fs-lg);font-weight:700;color:var(--color-text);margin-bottom:var(--space-1)">No reviews yet</h3>
+      <p style="font-size:var(--fs-sm);color:var(--color-text-tertiary)">After borrowing, lending, hiring, or working, reviews will show here.</p>
+    </div>`;
+  }
+
+  return `<div class="table-container">
+    <div style="overflow-x:auto">
+      <table class="data-table">
+        <thead><tr><th>Type</th><th>Person</th><th>Rating</th><th>Role</th><th>Comment</th></tr></thead>
+        <tbody>
+          ${all.map(r => {
+            const isReceived = r.target_user && r.target_user.id === currentUser.id;
+            return `<tr>
+              <td><span class="badge ${isReceived ? 'badge-approved' : 'badge-member'}">${isReceived ? 'Received' : 'Given'}</span></td>
+              <td style="color:var(--color-text-secondary);font-size:var(--fs-sm)">${isReceived ? r.reviewerName : r.targetName}</td>
+              <td style="color:#f59e0b">${'★'.repeat(r.rating)}${'☆'.repeat(5 - r.rating)}</td>
+              <td style="color:var(--color-text-secondary);font-size:var(--fs-sm)">${r.reviewerRole}</td>
+              <td style="color:var(--color-text-tertiary);font-size:var(--fs-sm);max-width:380px;white-space:normal">${r.comment}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
   </div>`;
 }
 
@@ -1702,6 +1791,44 @@ function renderApplyModal(state) {
         <div class="modal-footer" style="margin:0">
           <button type="button" class="btn btn-secondary" onclick="APP.closeModal()">Cancel</button>
           <button type="submit" class="btn btn-primary">${icon('send', 'w-4 h-4')}<span>Submit Application</span></button>
+        </div>
+      </div>
+    </form>
+  `);
+}
+
+function renderReviewModal(state) {
+  const target = state.reviewTarget;
+  if (!target) return '';
+
+  return renderModalBase(`Review ${target.userName}`, `
+    <form onsubmit="APP.handleCreateReview(event)">
+      <div style="display:flex;flex-direction:column;gap:var(--space-5)">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4)">
+          <div>
+            <label class="form-label">Rating</label>
+            <select class="select-field" id="review-rating">
+              <option value="5">5 - Excellent</option>
+              <option value="4">4 - Good</option>
+              <option value="3">3 - Fair</option>
+              <option value="2">2 - Poor</option>
+              <option value="1">1 - Bad</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Your Role</label>
+            <select class="select-field" id="review-role">
+              ${['Lender', 'Borrower', 'Employer', 'Worker'].map(role => `<option value="${role}" ${role === target.role ? 'selected' : ''}>${role}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="form-label">Comment</label>
+          <textarea class="textarea-field" id="review-comment" rows="4" placeholder="Share what the experience was like..." required></textarea>
+        </div>
+        <div class="modal-footer" style="margin:0">
+          <button type="button" class="btn btn-secondary" onclick="APP.closeModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary">${icon('star', 'w-4 h-4')}<span>Submit Review</span></button>
         </div>
       </div>
     </form>

@@ -85,6 +85,24 @@ class APIClient {
     };
   }
 
+  mapJobApplication(app) {
+    if (!app) return null;
+    const applicant = this.mapUser(app.applicant);
+    const job = this.mapJob(app.job);
+    return {
+      ...app,
+      job,
+      jobId: job ? job.id : null,
+      jobTitle: job ? job.title : 'Deleted Job',
+      employerId: job ? job.postedById : null,
+      employerName: job ? job.postedBy : 'Unknown',
+      applicantId: applicant ? applicant.id : null,
+      applicantName: applicant ? applicant.name : 'Unknown',
+      applicantContact: applicant ? (applicant.contact || applicant.email) : '',
+      appliedAt: app.applied_at
+    };
+  }
+
   async refreshToken() {
     const refresh = localStorage.getItem('refresh_token');
     if (!refresh) return false;
@@ -246,6 +264,18 @@ class APIClient {
   }
   markJobFilled(id) { return this.request(`/jobs/${id}/mark_filled/`, { method: 'POST' }); }
   markJobOpen(id) { return this.request(`/jobs/${id}/mark_open/`, { method: 'POST' }); }
+  async applyForJob(id, data) {
+    const app = await this.request(`/jobs/${id}/apply/`, { method: 'POST', body: data });
+    return this.mapJobApplication(app);
+  }
+  async getMyJobApplications() {
+    const apps = await this.request('/jobs/my_applications/');
+    return apps.map(app => this.mapJobApplication(app));
+  }
+  async getReceivedJobApplications() {
+    const apps = await this.request('/jobs/received_applications/');
+    return apps.map(app => this.mapJobApplication(app));
+  }
 
   // ========== BORROW REQUESTS ==========
   async listBorrowRequests(filters) {

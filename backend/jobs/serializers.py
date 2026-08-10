@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import JobOpportunity
+from .models import JobOpportunity, JobApplication
 from users.serializers import UserSerializer
 
 class JobOpportunitySerializer(serializers.ModelSerializer):
@@ -14,3 +14,19 @@ class JobOpportunityCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = JobOpportunity
         fields = ['id', 'title', 'category', 'status', 'description', 'location', 'rate', 'duration', 'contact_info', 'requirements']
+
+
+class JobApplicationSerializer(serializers.ModelSerializer):
+    job = JobOpportunitySerializer(read_only=True)
+    applicant = UserSerializer(read_only=True)
+
+    class Meta:
+        model = JobApplication
+        fields = ['id', 'job', 'applicant', 'pitch', 'status', 'applied_at', 'updated_at']
+        read_only_fields = ['id', 'job', 'applicant', 'applied_at', 'updated_at']
+
+
+class JobApplicationCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = JobApplication
+        fields = ['id', 'pitch']

@@ -39,3 +39,29 @@ class JobOpportunity(models.Model):
 
     def __str__(self):
         return f"{self.title} ({self.status})"
+
+
+class JobApplication(models.Model):
+    STATUS_CHOICES = (
+        ('Pending', 'Pending'),
+        ('Accepted', 'Accepted'),
+        ('Declined', 'Declined'),
+    )
+
+    id = models.CharField(max_length=50, primary_key=True, unique=True)
+    job = models.ForeignKey(JobOpportunity, on_delete=models.CASCADE, related_name='applications')
+    applicant = models.ForeignKey(User, on_delete=models.CASCADE, related_name='job_applications')
+    pitch = models.TextField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')
+    applied_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'job_applications'
+        verbose_name = 'Job Application'
+        verbose_name_plural = 'Job Applications'
+        ordering = ['-applied_at']
+        unique_together = ('job', 'applicant')
+
+    def __str__(self):
+        return f"{self.applicant.username} -> {self.job.title} ({self.status})"
