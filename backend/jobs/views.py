@@ -6,6 +6,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from django.db import IntegrityError
 from .models import JobOpportunity, JobApplication
 from .serializers import JobOpportunitySerializer, JobOpportunityCreateSerializer, JobApplicationSerializer, JobApplicationCreateSerializer
+from users.email_service import send_job_application_notification
 
 class JobOpportunityViewSet(viewsets.ModelViewSet):
     queryset = JobOpportunity.objects.all()
@@ -74,6 +75,10 @@ class JobOpportunityViewSet(viewsets.ModelViewSet):
             serializer.save(job=job, applicant=request.user)
         except IntegrityError:
             return Response({'detail': 'You have already applied for this job.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Notify the job poster about the new application
+        send_job_application_notification(serializer.instance)
+
         return Response(JobApplicationSerializer(serializer.instance).data, status=status.HTTP_201_CREATED)
 
     @action(detail=False, methods=['get'])

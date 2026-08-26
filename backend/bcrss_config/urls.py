@@ -51,6 +51,8 @@ urlpatterns = [
     path('api/auth/login/', login, name='login'),
     path('api/auth/logout/', logout, name='logout'),
     path('api/auth/me/', get_current_user, name='get_current_user'),
+    path('api/auth/password-reset/', AuthViewSet.as_view({'post': 'password_reset'}), name='password_reset'),
+    path('api/auth/password-reset-confirm/', AuthViewSet.as_view({'post': 'password_reset_confirm'}), name='password_reset_confirm'),
     # API routes
     path('api/', include(router.urls)),
     path('api-auth/', include('rest_framework.urls')),

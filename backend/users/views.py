@@ -7,7 +7,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from .models import User
-from .serializers import UserSerializer, UserDetailSerializer
+from .serializers import UserSerializer, UserDetailSerializer, UserPublicSerializer
 from .reports import generate_pdf_report
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -24,6 +24,8 @@ class UserViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action == 'retrieve':
             return UserDetailSerializer
+        if self.action == 'list':
+            return UserPublicSerializer
         return UserSerializer
 
     def _is_role_admin(self, user):

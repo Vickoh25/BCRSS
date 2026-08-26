@@ -2,9 +2,12 @@ from rest_framework import status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
+from django.contrib.auth.tokens import default_token_generator
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.utils.encoding import force_bytes, force_str
 from .models import User
 from .serializers import UserSerializer, UserDetailSerializer
 from .auth_serializers import (
@@ -13,35 +16,16 @@ from .auth_serializers import (
     CustomTokenObtainPairSerializer,
     ChangePasswordSerializer,
     UserProfileUpdateSerializer,
+    PasswordResetSerializer,
+    PasswordResetConfirmSerializer,
 )
+from .email_service import send_welcome_email, send_password_reset_email
 
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     """Custom JWT token obtain view with user data"""
     serializer_class = CustomTokenObtainPairSerializer
     permission_classes = [AllowAny]
-
-
-class RegisterView(viewsets.ViewSet):
-    """User registration endpoint"""
-    permission_classes = [AllowAny]
-    
-    @action(detail=False, methods=['post'])
-    def register(self, request):
-        """Register a new user"""
-        serializer = UserRegisterSerializer(data=request.data)
-        if serializer.is_valid():
-            user = serializer.save()
-            refresh = RefreshToken.for_user(user)
-            return Response({
-                'message': 'User registered successfully',
-                'user': UserSerializer(user).data,
-                'tokens': {
-                    'refresh': str(refresh),
-                    'access': str(refresh.access_token),
-                }
-            }, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class AuthViewSet(viewsets.ViewSet):
@@ -139,6 +123,53 @@ class AuthViewSet(viewsets.ViewSet):
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
+    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
+    def password_reset(self, request):
+        """Request a password reset email"""
+        serializer = PasswordResetSerializer(data=request.data)
+        if serializer.is_valid():
+            email = serializer.validated_data['email']
+            try:
+                user = User.objects.get(email=email)
+                # Generate a token
+                token = default_token_generator.make_token(user)
+                uid = urlsafe_base64_encode(force_bytes(user.pk))
+                # Send the reset email
+                send_password_reset_email(user, token)
+            except User.DoesNotExist:
+                pass  # Silently succeed to prevent email enumeration
+            return Response(
+                {'message': 'If an account exists with that email, a reset link has been sent.'},
+                status=status.HTTP_200_OK
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
+    def password_reset_confirm(self, request):
+        """Confirm a password reset with token and new password"""
+        serializer = PasswordResetConfirmSerializer(data=request.data)
+        if serializer.is_valid():
+            token = serializer.validated_data['token']
+            new_password = serializer.validated_data['new_password']
+            # We need the user — the frontend should send user_id or email
+            user_id = request.data.get('user_id')
+            if not user_id:
+                return Response(
+                    {'error': 'user_id is required'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            try:
+                user = User.objects.get(id=user_id)
+                if default_token_generator.check_token(user, token):
+                    user.set_password(new_password)
+                    user.save()
+                    return Response({'message': 'Password reset successful'}, status=status.HTTP_200_OK)
+                else:
+                    return Response({'error': 'Invalid or expired token'}, status=status.HTTP_400_BAD_REQUEST)
+            except User.DoesNotExist:
+                return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -148,6 +179,10 @@ def register(request):
     if serializer.is_valid():
         user = serializer.save()
         refresh = RefreshToken.for_user(user)
+
+        # Send welcome email (non-blocking)
+        send_welcome_email(user)
+
         return Response({
             'message': 'User registered successfully',
             'user': UserSerializer(user).data,

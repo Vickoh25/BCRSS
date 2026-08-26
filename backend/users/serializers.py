@@ -1,6 +1,14 @@
 from rest_framework import serializers
 from .models import User
 
+
+class UserPublicSerializer(serializers.ModelSerializer):
+    """Public-facing serializer — hides email, contact, and other PII."""
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'first_name', 'last_name', 'role', 'location', 'avatar_color', 'bio']
+
+
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User

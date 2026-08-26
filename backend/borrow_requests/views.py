@@ -3,9 +3,19 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 import uuid
+import time
 from .models import BorrowRequest
 from .serializers import BorrowRequestSerializer, BorrowRequestCreateSerializer
 from resources.models import Resource
+from users.email_service import (
+    send_borrow_request_notification,
+    send_borrow_approved_notification,
+    send_borrow_declined_notification,
+    send_return_reminder,
+    send_returned_notification,
+    send_dispute_raised_notification,
+    send_dispute_resolved_notification,
+)
 
 
 class BorrowRequestViewSet(viewsets.ModelViewSet):
@@ -63,17 +73,10 @@ class BorrowRequestViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         """Create a new borrow request - auto-assign requester, owner, and id"""
         try:
-            import uuid
-            import time
-        
             data = request.data.copy()
         
-            # Generate a unique ID - use both uuid and timestamp for guarantee
-            try:
-                unique_id = f"req-{uuid.uuid4().hex[:12]}-{int(time.time() * 1000) % 10000}"
-            except:
-                # Fallback if uuid fails
-                unique_id = f"req-{int(time.time() * 1000000)}"
+            # Generate a unique ID server-side
+            unique_id = f"req-{uuid.uuid4().hex[:12]}-{int(time.time() * 1000) % 10000}"
         
             data['id'] = unique_id
             data['requester'] = request.user.id
@@ -110,6 +113,10 @@ class BorrowRequestViewSet(viewsets.ModelViewSet):
             self.perform_create(serializer)
         
             instance = serializer.instance
+
+            # Send email notification to the resource owner
+            send_borrow_request_notification(instance)
+        
             full_serializer = BorrowRequestSerializer(instance)
             return Response(full_serializer.data, status=status.HTTP_201_CREATED)
         except Exception as e:
@@ -144,6 +151,9 @@ class BorrowRequestViewSet(viewsets.ModelViewSet):
         item = borrow_request.item
         item.status = 'Borrowed'
         item.save()
+
+        # Notify the requester that their request was approved
+        send_borrow_approved_notification(borrow_request)
         
         serializer = BorrowRequestSerializer(borrow_request)
         return Response(serializer.data)
@@ -167,6 +177,9 @@ class BorrowRequestViewSet(viewsets.ModelViewSet):
         
         borrow_request.status = 'Declined'
         borrow_request.save()
+
+        # Notify the requester that their request was declined
+        send_borrow_declined_notification(borrow_request)
         
         serializer = BorrowRequestSerializer(borrow_request)
         return Response(serializer.data)
@@ -192,15 +205,24 @@ class BorrowRequestViewSet(viewsets.ModelViewSet):
         borrow_request.save()
         
         item = borrow_request.item
-        item.status = 'Available'
-        item.save()
+
+        # Only set Available if no other approved requests exist for this item
+        other_approved = BorrowRequest.objects.filter(
+            item=item, status='Approved'
+        ).exclude(id=borrow_request.id).exists()
+        if not other_approved:
+            item.status = 'Available'
+            item.save()
+
+        # Notify the owner that the item has been returned
+        send_returned_notification(borrow_request)
         
         serializer = BorrowRequestSerializer(borrow_request)
         return Response(serializer.data)
     
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def send_reminder(self, request, pk=None):
-        """Send a reminder to the borrower (owner only)"""
+        """Send a return reminder email to the borrower (owner only)"""
         borrow_request = self.get_object()
 
         if borrow_request.owner != request.user:
@@ -214,12 +236,22 @@ class BorrowRequestViewSet(viewsets.ModelViewSet):
                 {'error': 'Reminders can only be sent for approved requests'},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+        # Send the actual email reminder
+        email_sent = send_return_reminder(borrow_request)
         
         borrow_request.reminder_sent = True
         borrow_request.save()
         
         serializer = BorrowRequestSerializer(borrow_request)
-        return Response(serializer.data)
+
+        if email_sent:
+            return Response(serializer.data)
+        else:
+            return Response(
+                {**serializer.data, 'warning': 'Reminder saved but email could not be sent (no email address on file)'},
+                status=status.HTTP_200_OK
+            )
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def raise_dispute(self, request, pk=None):
@@ -242,6 +274,9 @@ class BorrowRequestViewSet(viewsets.ModelViewSet):
         borrow_request.is_disputed = True
         borrow_request.dispute_message = message
         borrow_request.save()
+
+        # Notify the other party
+        send_dispute_raised_notification(borrow_request, raised_by=request.user)
         
         serializer = BorrowRequestSerializer(borrow_request)
         return Response(serializer.data)
@@ -277,8 +312,15 @@ class BorrowRequestViewSet(viewsets.ModelViewSet):
         
         if new_status == 'Returned':
             item = borrow_request.item
-            item.status = 'Available'
-            item.save()
+            other_approved = BorrowRequest.objects.filter(
+                item=item, status='Approved'
+            ).exclude(id=borrow_request.id).exists()
+            if not other_approved:
+                item.status = 'Available'
+                item.save()
+
+        # Notify both parties
+        send_dispute_resolved_notification(borrow_request)
         
         serializer = BorrowRequestSerializer(borrow_request)
         return Response(serializer.data)

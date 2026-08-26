@@ -214,5 +214,8 @@ DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@bcrss.com')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# Frontend URL for email links
+FRONTEND_URL = os.getenv('FRONTEND_URL', 'https://bcrss.vercel.app')
+
 # Authentication
 AUTH_USER_MODEL = 'users.User'
