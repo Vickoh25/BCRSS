@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from drf_spectacular.utils import extend_schema_field
 from .models import User
 
 
@@ -23,11 +24,14 @@ class UserDetailSerializer(UserSerializer):
     class Meta(UserSerializer.Meta):
         fields = UserSerializer.Meta.fields + ['resources_count', 'jobs_count', 'reviews_count']
     
-    def get_resources_count(self, obj):
+    @extend_schema_field(int)
+    def get_resources_count(self, obj) -> int:
         return obj.resources.count()
-    
-    def get_jobs_count(self, obj):
+
+    @extend_schema_field(int)
+    def get_jobs_count(self, obj) -> int:
         return obj.job_postings.count()
-    
-    def get_reviews_count(self, obj):
+
+    @extend_schema_field(int)
+    def get_reviews_count(self, obj) -> int:
         return obj.reviews_received.count()

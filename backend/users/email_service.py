@@ -234,13 +234,17 @@ def send_welcome_email(user):
     return _send(subject, message, user.email)
 
 
-def send_password_reset_email(user, reset_token):
-    """Send a password reset link to the user."""
+def send_password_reset_email(user, reset_token, uid):
+    """Send a password reset link to the user.
+
+    The URL includes both uidb64 and token so the confirmation endpoint
+    can identify the user without requiring user_id in the request body.
+    """
     if not user.email:
         return False
 
     frontend_url = settings.FRONTEND_URL or 'https://bcrss.vercel.app'
-    reset_url = f"{frontend_url}/reset-password?token={reset_token}"
+    reset_url = f"{frontend_url}/reset-password?uid={uid}&token={reset_token}"
 
     subject = "BCRSS - Password Reset Request"
     message = (

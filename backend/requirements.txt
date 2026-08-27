@@ -3,6 +3,7 @@ djangorestframework==3.14.0
 djangorestframework-simplejwt==5.5.0
 django-cors-headers==4.4.0
 django-filter==24.1
+drf-spectacular==0.28.0
 
 psycopg[binary]==3.2.10
 dj-database-url==2.1.0

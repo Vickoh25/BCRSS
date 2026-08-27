@@ -32,14 +32,34 @@ const APP = {
     // UI - Dropdowns & Modals
     userDropdownOpen: false,
     mobileMenuOpen: false,
-    activeModal: null,     // null, 'share', 'postJob', 'borrow', 'apply', 'review'
+    activeModal: null,     // null, 'share', 'postJob', 'borrow', 'apply', 'review', 'resetPassword'
     borrowItemTarget: null,
     applyJobTarget: null,
     reviewTarget: null,
+
+    // UI - Password Reset
+    resetPasswordUid: null,
+    resetPasswordToken: null,
+    resetPasswordState: 'form',  // 'form' | 'success' | 'error'
+    resetPasswordError: '',
   },
 
   // ==================== INITIALISATION ====================
   async init() {
+    // Step 0: Check for password reset URL params
+    const urlParams = new URLSearchParams(window.location.search);
+    const uid = urlParams.get('uid');
+    const token = urlParams.get('token');
+    if (uid && token) {
+      this.state.resetPasswordUid = uid;
+      this.state.resetPasswordToken = token;
+      this.state.resetPasswordState = 'form';
+      this.state.resetPasswordError = '';
+      this.state.activeModal = 'resetPassword';
+      // Clean the URL without triggering a reload
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+
     // Step 1: Clear stale localStorage data if no valid token
     if (!apiClient.token) {
       localStorage.removeItem('bcrss_current_user');
@@ -261,6 +281,8 @@ const APP = {
       container.innerHTML = renderLoginModal(s);
     } else if (s.activeModal === 'register') {
       container.innerHTML = renderRegisterModal(s);
+    } else if (s.activeModal === 'resetPassword') {
+      container.innerHTML = renderResetPasswordModal(s);
     } else {
       container.innerHTML = '';
     }
@@ -469,6 +491,62 @@ const APP = {
     if (job) {
       this.state.applyJobTarget = job;
       this.state.activeModal = 'apply';
+      this.render();
+    }
+  },
+
+  // ==================== PASSWORD RESET HANDLER ====================
+  async handleForgotPassword() {
+    const email = prompt('Enter your email address to receive a password reset link:');
+    if (!email) return;
+    try {
+      await apiClient.request('/auth/password_reset/', {
+        method: 'POST',
+        body: { email }
+      });
+      alert('If an account exists with that email, a reset link has been sent. Check your inbox.');
+    } catch (err) {
+      alert('Failed to send reset email. Please try again.');
+    }
+  },
+
+  async handleResetPassword(e) {
+    e.preventDefault();
+    const newPassword = document.getElementById('reset-new-password').value;
+    const confirmPassword = document.getElementById('reset-confirm-password').value;
+    const uid = this.state.resetPasswordUid;
+    const token = this.state.resetPasswordToken;
+
+    if (!uid || !token) {
+      this.state.resetPasswordState = 'error';
+      this.state.resetPasswordError = 'Invalid or missing reset link. Please request a new one.';
+      this.render();
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      this.state.resetPasswordState = 'error';
+      this.state.resetPasswordError = 'Passwords do not match.';
+      this.render();
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      this.state.resetPasswordState = 'error';
+      this.state.resetPasswordError = 'Password must be at least 8 characters.';
+      this.render();
+      return;
+    }
+
+    try {
+      await apiClient.confirmPasswordReset(uid, token, newPassword, confirmPassword);
+      this.state.resetPasswordState = 'success';
+      this.state.resetPasswordUid = null;
+      this.state.resetPasswordToken = null;
+      this.render();
+    } catch (err) {
+      this.state.resetPasswordState = 'error';
+      this.state.resetPasswordError = err.message || 'Failed to reset password. The link may have expired.';
       this.render();
     }
   },

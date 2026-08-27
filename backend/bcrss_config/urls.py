@@ -18,14 +18,15 @@ from django.contrib import admin
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenRefreshView
+from drf_spectacular.views import (
+    SpectacularAPIView,
+    SpectacularSwaggerView,
+    SpectacularRedocView,
+)
 from users.views import UserViewSet
 from users.auth_views import (
     CustomTokenObtainPairView,
     AuthViewSet,
-    register,
-    login,
-    logout,
-    get_current_user,
 )
 from resources.views import ResourceViewSet
 from jobs.views import JobOpportunityViewSet
@@ -46,14 +47,11 @@ urlpatterns = [
     # JWT Token endpoints
     path('api/token/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-    # Authentication endpoints
-    path('api/auth/register/', register, name='register'),
-    path('api/auth/login/', login, name='login'),
-    path('api/auth/logout/', logout, name='logout'),
-    path('api/auth/me/', get_current_user, name='get_current_user'),
-    path('api/auth/password-reset/', AuthViewSet.as_view({'post': 'password_reset'}), name='password_reset'),
-    path('api/auth/password-reset-confirm/', AuthViewSet.as_view({'post': 'password_reset_confirm'}), name='password_reset_confirm'),
-    # API routes
+    # API routes (includes auth endpoints via router)
     path('api/', include(router.urls)),
     path('api-auth/', include('rest_framework.urls')),
+    # API documentation
+    path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
+    path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
+    path('api/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
 ]

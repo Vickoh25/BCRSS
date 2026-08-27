@@ -1855,6 +1855,7 @@ function renderLoginModal(state) {
           <input type="password" class="input-field" id="login-password" placeholder="Enter your password" required>
         </div>
         <button type="submit" class="btn btn-primary btn-lg" style="width:100%;justify-content:center;margin-top:var(--space-2)">Log In</button>
+        <p style="text-align:center;font-size:var(--fs-sm)"><a href="#" onclick="event.preventDefault();APP.handleForgotPassword()" style="color:var(--color-primary);font-weight:600">Forgot password?</a></p>
         <p style="text-align:center;font-size:var(--fs-sm);color:var(--color-text-tertiary)">Don't have an account? <a href="#" onclick="event.preventDefault();APP.openModal('register')" style="color:var(--color-primary);font-weight:600">Sign up</a></p>
       </div>
     </form>
@@ -1915,4 +1916,54 @@ function renderRegisterModal(state) {
       </div>
     </form>
   `, 'lg');
+}
+
+function renderResetPasswordModal(state) {
+  const resetState = state.resetPasswordState || 'form'; // 'form' | 'success' | 'error'
+  const resetError = state.resetPasswordError || '';
+
+  if (resetState === 'success') {
+    return renderModalBase('Password Reset', `
+      <div style="display:flex;flex-direction:column;align-items:center;gap:var(--space-4);padding:var(--space-6) 0;text-align:center">
+        <div style="width:56px;height:56px;border-radius:50%;background:var(--color-success-bg, #ecfdf5);display:flex;align-items:center;justify-content:center">
+          ${icon('checkCircle', 'w-7 h-7 text-success')}
+        </div>
+        <div>
+          <h3 style="font-family:var(--font-serif);font-size:var(--fs-xl);font-weight:700;color:var(--color-text);margin-bottom:var(--space-2)">Password Reset Successfully</h3>
+          <p style="font-size:var(--fs-sm);color:var(--color-text-secondary);max-width:280px;margin:0 auto">Your password has been updated. You can now log in with your new password.</p>
+        </div>
+        <button class="btn btn-primary btn-lg" style="width:100%;justify-content:center;margin-top:var(--space-2)"
+          onclick="APP.closeModal(); APP.openModal('login')">
+          Log In
+        </button>
+      </div>
+    `, 'sm');
+  }
+
+  return renderModalBase('Reset Password', `
+    <form onsubmit="APP.handleResetPassword(event)">
+      <div style="display:flex;flex-direction:column;gap:var(--space-5)">
+        <div style="text-align:center;margin-bottom:var(--space-2)">
+          <div style="width:56px;height:56px;border-radius:50%;background:var(--color-primary-light);display:flex;align-items:center;justify-content:center;margin:0 auto var(--space-3)">${icon('shield', 'w-6 h-6 text-primary')}</div>
+          <h3 style="font-family:var(--font-serif);font-size:var(--fs-xl);font-weight:700;color:var(--color-text)">Set New Password</h3>
+          <p style="font-size:var(--fs-sm);color:var(--color-text-tertiary);margin-top:var(--space-1)">Choose a strong password for your account</p>
+        </div>
+        ${resetState === 'error' && resetError ? `
+          <div style="padding:var(--space-3) var(--space-4);border-radius:var(--radius-md);background:var(--color-error-bg, #fef2f2);border:1px solid var(--color-error-border, #fecaca);font-size:var(--fs-sm);color:var(--color-error)">
+            ${resetError}
+          </div>
+        ` : ''}
+        <div>
+          <label class="form-label">New Password</label>
+          <input type="password" class="input-field" id="reset-new-password" placeholder="Enter new password (min 8 characters)" required minlength="8">
+        </div>
+        <div>
+          <label class="form-label">Confirm New Password</label>
+          <input type="password" class="input-field" id="reset-confirm-password" placeholder="Confirm new password" required minlength="8">
+        </div>
+        <button type="submit" class="btn btn-primary btn-lg" style="width:100%;justify-content:center;margin-top:var(--space-2)">Reset Password</button>
+        <p style="text-align:center;font-size:var(--fs-sm);color:var(--color-text-tertiary)">Remember your password? <a href="#" onclick="event.preventDefault();APP.closeModal(); APP.openModal('login')" style="color:var(--color-primary);font-weight:600">Log in</a></p>
+      </div>
+    </form>
+  `, 'sm');
 }

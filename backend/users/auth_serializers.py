@@ -107,13 +107,11 @@ class ChangePasswordSerializer(serializers.Serializer):
 
 
 class PasswordResetSerializer(serializers.Serializer):
-    """Serializer for password reset request"""
+    """Serializer for password reset request.
+
+    Note: We intentionally do NOT validate that the email exists here.
+    The view returns the same 200 response regardless, to prevent email enumeration."""
     email = serializers.EmailField()
-    
-    def validate_email(self, value):
-        if not User.objects.filter(email=value).exists():
-            raise serializers.ValidationError('No user with this email exists.')
-        return value
 
 
 class PasswordResetConfirmSerializer(serializers.Serializer):

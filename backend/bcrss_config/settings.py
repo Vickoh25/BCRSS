@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
     'django_filters',
+    'drf_spectacular',
     'users',
     'resources',
     'jobs',
@@ -163,6 +164,7 @@ REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 20,
     'DEFAULT_FILTER_BACKENDS': ['rest_framework.filters.SearchFilter', 'rest_framework.filters.OrderingFilter'],
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
 # JWT Configuration
@@ -219,3 +221,32 @@ FRONTEND_URL = os.getenv('FRONTEND_URL', 'https://bcrss.vercel.app')
 
 # Authentication
 AUTH_USER_MODEL = 'users.User'
+
+# drf-spectacular (OpenAPI / Swagger)
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'BCRSS API',
+    'DESCRIPTION': 'Baraton Community Resource Sharing System — REST API for users, resources, jobs, borrow requests, and reviews.',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'COMPONENT_SPLIT_REQUEST': True,
+    'ENUM_NAME_OVERRIDES': {
+        'ResourceStatus': 'resources.models.Resource.STATUS_CHOICES',
+        'ResourceCategory': 'resources.models.Resource.CATEGORY_CHOICES',
+        'ResourceCondition': 'resources.models.Resource.CONDITION_CHOICES',
+        'LendingType': 'resources.models.Resource.LENDING_TYPE_CHOICES',
+        'JobStatus': 'jobs.models.JobOpportunity.STATUS_CHOICES',
+        'JobCategory': 'jobs.models.JobOpportunity.CATEGORY_CHOICES',
+        'BorrowStatus': 'borrow_requests.models.BorrowRequest.STATUS_CHOICES',
+        'ReviewRole': 'reviews.models.Review.ROLE_CHOICES',
+        'UserRole': 'users.models.User.ROLE_CHOICES',
+        'JobApplicationStatus': 'jobs.models.JobApplication.STATUS_CHOICES',
+    },
+    'TAGS': [
+        {'name': 'Auth', 'description': 'Registration, login, logout, password reset'},
+        {'name': 'Users', 'description': 'User profiles and admin management'},
+        {'name': 'Resources', 'description': 'Farm tools, textbooks, and household items'},
+        {'name': 'Jobs', 'description': 'Job opportunities and applications'},
+        {'name': 'Borrow Requests', 'description': 'Borrowing workflow and dispute resolution'},
+        {'name': 'Reviews', 'description': 'Ratings and community feedback'},
+    ],
+}

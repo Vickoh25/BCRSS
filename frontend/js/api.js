@@ -363,6 +363,19 @@ class APIClient {
     };
   }
 
+  // ========== PASSWORD RESET ==========
+  confirmPasswordReset(uidb64, token, newPassword, newPasswordConfirm) {
+    return this.request('/auth/password_reset_confirm/', {
+      method: 'POST',
+      body: {
+        uidb64,
+        token,
+        new_password: newPassword,
+        new_password_confirm: newPasswordConfirm,
+      }
+    });
+  }
+
   // ========== REVIEWS ==========
   async listReviews(filters) {
     const query = filters ? new URLSearchParams(filters).toString() : '';
