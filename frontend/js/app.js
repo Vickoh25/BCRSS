@@ -358,7 +358,16 @@ const APP = {
       alert(`Welcome back, ${this.state.currentUser.name}!`);
       this.init(); // Re-init to load data
     } catch (err) {
-      alert('Login failed. Please check your credentials.');
+      const msg = err.message || '';
+      if (msg.includes('Network error') || msg.includes('Failed to fetch')) {
+        alert('Unable to reach the server. The backend may be starting up — please wait a moment and try again.');
+      } else if (msg.includes('API Error 400')) {
+        alert('Invalid username or password. Please try again.');
+      } else if (msg.includes('API Error 404')) {
+        alert('Login service unavailable. The server may be restarting — please try again in a moment.');
+      } else {
+        alert('Login failed. Please check your credentials and try again.');
+      }
     }
   },
 
@@ -387,7 +396,16 @@ const APP = {
       alert(`Account created! Welcome, ${this.state.currentUser.name}.`);
       this.init();
     } catch (err) {
-      alert('Registration failed. Username or email might be taken.');
+      const msg = err.message || '';
+      if (msg.includes('Network error') || msg.includes('Failed to fetch')) {
+        alert('Unable to reach the server. The backend may be starting up — please wait a moment and try again.');
+      } else if (msg.includes('API Error 400')) {
+        alert('Registration failed. Username or email might already be taken.');
+      } else if (msg.includes('API Error 404')) {
+        alert('Registration service unavailable. The server may be restarting — please try again in a moment.');
+      } else {
+        alert('Registration failed. Please check your details and try again.');
+      }
     }
   },
 

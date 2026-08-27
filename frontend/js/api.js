@@ -158,6 +158,12 @@ class APIClient {
     } catch (error) {
       if (error.message.startsWith('API Error')) throw error;
       console.error(`Request failed for ${endpoint}:`, error);
+      if (error.name === 'TypeError' && error.message === 'Failed to fetch') {
+        throw new Error(`Network error for ${endpoint}. The backend may be starting up or unreachable.`);
+      }
+      if (error.name === 'TypeError' && error.message.includes('ERR_NAME_NOT_RESOLVED')) {
+        throw new Error('Backend server is unreachable. It may be restarting on Render (free tier sleeps after inactivity).');
+      }
       throw new Error(`Network error for ${endpoint}. Is the backend running?`);
     }
   }
