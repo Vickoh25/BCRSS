@@ -93,14 +93,17 @@ import dj_database_url
 
 DATABASE_URL = os.getenv('DATABASE_URL', '')
 
+db_config = None
 if DATABASE_URL:
-    DATABASES = {
-        'default': dj_database_url.config(
-            conn_max_age=600,
-            ssl_require=os.getenv('DEBUG', 'True') != 'True',
-        )
-    }
+    db_config = dj_database_url.config(
+        conn_max_age=600,
+        ssl_require=os.getenv('DEBUG', 'True') != 'True',
+    )
+
+if db_config:
+    DATABASES = {'default': db_config}
 else:
+    # Fallback to SQLite when DATABASE_URL is unset, empty, or invalid
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',

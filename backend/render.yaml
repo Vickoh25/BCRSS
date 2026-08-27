@@ -2,15 +2,13 @@ services:
   - type: web
     name: bcrss-backend
     env: python
-    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput
-    startCommand: python manage.py migrate --noinput && gunicorn bcrss_config.wsgi:application
+    buildCommand: cd backend && pip install -r requirements.txt && python manage.py collectstatic --noinput
+    startCommand: cd backend && python manage.py migrate --noinput && gunicorn bcrss_config.wsgi:application --bind 0.0.0.0:$PORT
     envVars:
       - key: DEBUG
         value: "False"
       - key: SECRET_KEY
         generateValue: true
-      - key: USE_POSTGRES
-        value: "True"
       - key: DATABASE_URL
         fromDatabase:
           name: bcrss-db
