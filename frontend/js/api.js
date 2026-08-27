@@ -150,7 +150,20 @@ class APIClient {
 
       if (!response.ok) {
         const errBody = await response.json().catch(() => ({ detail: 'Unknown error' }));
-        const errMsg = errBody.detail || errBody.error || errBody.non_field_errors?.join(', ') || response.statusText;
+        // Build a human-readable message from DRF error format
+        let errMsg = errBody.detail || errBody.error || errBody.non_field_errors?.join(', ') || '';
+        if (!errMsg) {
+          // DRF field errors: { "username": ["already exists"], "email": ["invalid"] }
+          const fieldErrors = [];
+          for (const [field, msgs] of Object.entries(errBody)) {
+            if (Array.isArray(msgs)) {
+              fieldErrors.push(`${field}: ${msgs.join(', ')}`);
+            } else if (typeof msgs === 'string') {
+              fieldErrors.push(`${field}: ${msgs}`);
+            }
+          }
+          errMsg = fieldErrors.length > 0 ? fieldErrors.join('; ') : response.statusText;
+        }
         throw new Error(`API Error ${response.status}: ${errMsg}`);
       }
       if (response.status === 204) return {};

@@ -389,6 +389,11 @@ const APP = {
       return;
     }
 
+    if (data.password.length < 8) {
+      alert('Password must be at least 8 characters.');
+      return;
+    }
+
     try {
       const res = await apiClient.register(data);
       this.state.currentUser = apiClient.mapUser(res.user);
@@ -397,14 +402,19 @@ const APP = {
       this.init();
     } catch (err) {
       const msg = err.message || '';
+      // Extract backend validation details from the error message
+      let detail = msg;
+      const apiMatch = msg.match(/API Error \d+: (.+)/);
+      if (apiMatch) detail = apiMatch[1];
+
       if (msg.includes('Network error') || msg.includes('Failed to fetch')) {
         alert('Unable to reach the server. The backend may be starting up — please wait a moment and try again.');
       } else if (msg.includes('API Error 400')) {
-        alert('Registration failed. Username or email might already be taken.');
+        alert(`Registration failed: ${detail}`);
       } else if (msg.includes('API Error 404')) {
         alert('Registration service unavailable. The server may be restarting — please try again in a moment.');
       } else {
-        alert('Registration failed. Please check your details and try again.');
+        alert(`Registration failed: ${detail}`);
       }
     }
   },
