@@ -100,7 +100,9 @@ if DATABASE_URL:
         ssl_require=os.getenv('DEBUG', 'True') != 'True',
     )
 
-if db_config:
+# dj_database_url.config() can return a dict with empty NAME when the
+# URL is set but malformed/unreachable — validate before using it.
+if db_config and db_config.get('NAME'):
     DATABASES = {'default': db_config}
 else:
     # Fallback to SQLite when DATABASE_URL is unset, empty, or invalid

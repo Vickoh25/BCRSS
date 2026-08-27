@@ -1,2 +1,2 @@
 web: gunicorn bcrss_config.wsgi:application
-release: python manage.py migrate --noinput
+release: for i in 1 2 3 4 5; do python manage.py migrate --noinput && break || sleep 5; done

@@ -2,8 +2,8 @@ services:
   - type: web
     name: bcrss-backend
     env: python
-    buildCommand: cd backend && pip install -r requirements.txt && python manage.py collectstatic --noinput
-    startCommand: cd backend && python manage.py migrate --noinput && gunicorn bcrss_config.wsgi:application --bind 0.0.0.0:$PORT
+    buildCommand: cd backend && pip install -r requirements.txt
+    startCommand: cd backend && sh entrypoint.sh
     envVars:
       - key: DEBUG
         value: "False"
