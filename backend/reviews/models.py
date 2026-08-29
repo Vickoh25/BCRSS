@@ -17,6 +17,8 @@ class Review(models.Model):
         'resources.Resource',
         on_delete=models.CASCADE,
         related_name='reviews',
+        null=True,
+        blank=True,
         help_text='The resource the review is about. Borrowers review the resource owner they borrowed from.'
     )
     date = models.DateField(auto_now_add=True)

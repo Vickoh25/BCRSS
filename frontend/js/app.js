@@ -498,6 +498,7 @@ const APP = {
     this.state.borrowItemTarget = null;
     this.state.applyJobTarget = null;
     this.state.reviewTarget = null;
+    this._pendingShareImage = null;
     this.render();
   },
 
@@ -594,13 +595,95 @@ const APP = {
     }
   },
 
+  // ==================== IMAGE HELPERS ====================
+  _pendingShareImage: null,
+
+  previewShareImage(input) {
+    const file = input.files && input.files[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file.');
+      return;
+    }
+
+    // Validate file size (max 10MB raw, will compress)
+    if (file.size > 10 * 1024 * 1024) {
+      alert('Image is too large. Please choose a smaller image (under 10MB).');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      this.compressImage(ev.target.result, 800, 0.8).then((compressed) => {
+        this._pendingShareImage = compressed;
+        const preview = document.getElementById('share-image-preview');
+        const img = document.getElementById('share-image-img');
+        const buttons = document.getElementById('share-image-buttons');
+        if (preview && img) {
+          img.src = compressed;
+          preview.style.display = 'block';
+        }
+        if (buttons) buttons.style.display = 'none';
+      });
+    };
+    reader.readAsDataURL(file);
+  },
+
+  clearShareImage() {
+    this._pendingShareImage = null;
+    const preview = document.getElementById('share-image-preview');
+    const buttons = document.getElementById('share-image-buttons');
+    const inputGallery = document.getElementById('share-image-input');
+    const inputCamera = document.getElementById('share-camera-input');
+    if (preview) preview.style.display = 'none';
+    if (buttons) buttons.style.display = 'flex';
+    if (inputGallery) inputGallery.value = '';
+    if (inputCamera) inputCamera.value = '';
+  },
+
+  compressImage(dataUrl, maxDim, quality) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        let w = img.width;
+        let h = img.height;
+        if (w > maxDim || h > maxDim) {
+          if (w > h) { h = Math.round(h * maxDim / w); w = maxDim; }
+          else { w = Math.round(w * maxDim / h); h = maxDim; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = dataUrl;
+    });
+  },
+
+  saveResourceImage(resourceId, dataUrl) {
+    try {
+      localStorage.setItem(`bcrss_img_${resourceId}`, dataUrl);
+    } catch (e) {
+      console.warn('Could not save image (localStorage full?):', e);
+    }
+  },
+
+  getResourceImage(resourceId) {
+    return localStorage.getItem(`bcrss_img_${resourceId}`) || null;
+  },
+
   // ==================== SHARE RESOURCE HANDLER ====================
   async handleShareResource(e) {
     e.preventDefault();
     if (!this.state.currentUser) return APP.openModal('login');
 
+    const resourceId = `res-${Date.now()}`;
     const data = {
-      id: `res-${Date.now()}`,
+      id: resourceId,
       title: document.getElementById('share-title').value.trim(),
       category: document.getElementById('share-category').value,
       condition: document.getElementById('share-condition').value,
@@ -623,6 +706,13 @@ const APP = {
 
     try {
       await apiClient.createResource(data);
+
+      // Save uploaded image locally if one was selected
+      if (this._pendingShareImage) {
+        this.saveResourceImage(resourceId, this._pendingShareImage);
+        this._pendingShareImage = null;
+      }
+
       this.state.activeModal = null;
       alert(`Fantastic! "${data.title}" has been successfully shared on the listing page!`);
       this.init();

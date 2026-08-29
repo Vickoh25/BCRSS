@@ -2,6 +2,7 @@ from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 from drf_spectacular.utils import extend_schema, inline_serializer
 from rest_framework import serializers as drf_serializers
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -23,10 +24,15 @@ from .auth_serializers import (
 from .email_service import send_welcome_email, send_password_reset_email
 
 
+class AuthRateThrottle(AnonRateThrottle):
+    rate = '10/minute'
+
+
 class CustomTokenObtainPairView(TokenObtainPairView):
     """Custom JWT token obtain view with user data"""
     serializer_class = CustomTokenObtainPairSerializer
     permission_classes = [AllowAny]
+    throttle_classes = [AuthRateThrottle]
 
 
 class AuthViewSet(viewsets.ViewSet):
@@ -45,26 +51,51 @@ class AuthViewSet(viewsets.ViewSet):
             }),
         })},
     )
-    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
+    @action(detail=False, methods=['post'], permission_classes=[AllowAny], throttle_classes=[AuthRateThrottle])
     def register(self, request):
         """Register a new user"""
+        import logging
+        _log = logging.getLogger(__name__)
+
         serializer = UserRegisterSerializer(data=request.data)
-        if serializer.is_valid():
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
             user = serializer.save()
+        except Exception as exc:
+            _log.error('register.save failed: %s', exc, exc_info=True)
+            return Response(
+                {'detail': f'Registration failed on the server: {exc}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        try:
             refresh = RefreshToken.for_user(user)
-            try:
-                send_welcome_email(user)
-            except Exception:
-                pass  # Email failure should not break registration
+        except Exception as exc:
+            _log.error('register.token failed: %s', exc, exc_info=True)
+            # User was created but token generation failed — still return success
+            # so the user can log in normally.
             return Response({
                 'message': 'User registered successfully',
                 'user': UserSerializer(user).data,
-                'tokens': {
-                    'refresh': str(refresh),
-                    'access': str(refresh.access_token),
-                }
+                'tokens': None,
+                'warning': 'Account created but login token could not be generated. Please log in.',
             }, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            send_welcome_email(user)
+        except Exception:
+            pass  # Email failure should not break registration
+
+        return Response({
+            'message': 'User registered successfully',
+            'user': UserSerializer(user).data,
+            'tokens': {
+                'refresh': str(refresh),
+                'access': str(refresh.access_token),
+            }
+        }, status=status.HTTP_201_CREATED)
 
     @extend_schema(
         summary='Login and obtain JWT tokens',
@@ -90,7 +121,7 @@ class AuthViewSet(viewsets.ViewSet):
             }),
         })},
     )
-    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
+    @action(detail=False, methods=['post'], permission_classes=[AllowAny], throttle_classes=[AuthRateThrottle])
     def login(self, request):
         """Login user and return JWT tokens"""
         serializer = UserLoginSerializer(data=request.data)
@@ -232,7 +263,7 @@ class AuthViewSet(viewsets.ViewSet):
             'message': drf_serializers.CharField(),
         })},
     )
-    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
+    @action(detail=False, methods=['post'], permission_classes=[AllowAny], throttle_classes=[AuthRateThrottle])
     def password_reset(self, request):
         """Request a password reset email. Includes uidb64 in the reset URL for secure confirmation."""
         serializer = PasswordResetSerializer(data=request.data)

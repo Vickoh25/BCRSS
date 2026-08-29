@@ -30,11 +30,15 @@ class BorrowRequestViewSet(viewsets.ModelViewSet):
         return BorrowRequestSerializer
     
     def get_queryset(self):
-        """Filter requests based on user role"""
+        """Filter requests based on user role. Admins see everything."""
         user = self.request.user
         if not user.is_authenticated:
             return BorrowRequest.objects.none()
-        
+
+        # Admins see all requests (needed for dispute resolution)
+        if getattr(user, 'role', None) == 'Admin':
+            return BorrowRequest.objects.all()
+
         # Users see requests they made OR requests where they are the owner
         return BorrowRequest.objects.filter(
             requester=user
@@ -70,6 +74,13 @@ class BorrowRequestViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
     
+    def perform_create(self, serializer):
+        """Override to inject server-set fields (id, requester, owner) that
+        are read-only on the serializer so DRF doesn't strip them."""
+        # Pop these from the view's临时 storage so we can set them here
+        extra = getattr(self, '_borrow_extra', {})
+        serializer.save(**extra)
+    
     def create(self, request, *args, **kwargs):
         """Create a new borrow request - auto-assign requester, owner, and id"""
         try:
@@ -77,9 +88,6 @@ class BorrowRequestViewSet(viewsets.ModelViewSet):
         
             # Generate a unique ID server-side
             unique_id = f"req-{uuid.uuid4().hex[:12]}-{int(time.time() * 1000) % 10000}"
-        
-            data['id'] = unique_id
-            data['requester'] = request.user.id
         
             # Get the item and set owner
             item_id = data.get('item')
@@ -93,7 +101,7 @@ class BorrowRequestViewSet(viewsets.ModelViewSet):
                 item = Resource.objects.get(id=item_id)
                 if not item.owner:
                     return Response(
-                        {'error': 'Resource has no owner'}, 
+                        {'error': 'Resource has no owner'},
                         status=status.HTTP_400_BAD_REQUEST
                     )
                 if item.owner == request.user:
@@ -101,14 +109,22 @@ class BorrowRequestViewSet(viewsets.ModelViewSet):
                         {'error': 'You cannot borrow your own item'},
                         status=status.HTTP_400_BAD_REQUEST
                     )
-                data['owner'] = item.owner.id
             except Resource.DoesNotExist:
                 return Response(
-                    {'error': f'Resource {item_id} not found'}, 
+                    {'error': f'Resource {item_id} not found'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
         
             serializer = self.get_serializer(data=data)
+        
+            # Store server-set fields so perform_create can inject them.
+            # These are read_only on the serializer so DRF strips them.
+            self._borrow_extra = {
+                'id': unique_id,
+                'requester': request.user,
+                'owner': item.owner,
+            }
+        
             serializer.is_valid(raise_exception=True)
             self.perform_create(serializer)
         

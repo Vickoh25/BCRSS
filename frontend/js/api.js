@@ -6,13 +6,11 @@
 const DEFAULT_REMOTE_API_BASE_URL = 'https://bcrss-backend.onrender.com/api';
 const API_BASE_URL = (() => {
   if (window.BCRSS_API_BASE_URL) return window.BCRSS_API_BASE_URL;
-
   const { hostname, origin } = window.location;
   const isLocalHost = hostname === 'localhost' || hostname === '127.0.0.1';
-
-  return isLocalHost ? `${origin}/api` : DEFAULT_REMOTE_API_BASE_URL;
+  // For local testing, use port 8000
+  return isLocalHost ? 'http://localhost:8000/api' : DEFAULT_REMOTE_API_BASE_URL;
 })();
-
 class APIClient {
   constructor(baseURL = API_BASE_URL) {
     this.baseURL = baseURL;

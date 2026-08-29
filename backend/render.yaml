@@ -9,19 +9,16 @@ services:
         value: "False"
       - key: SECRET_KEY
         generateValue: true
+      # DATABASE_URL should be set manually in Render dashboard
+      # to your Supabase PostgreSQL connection string.
+      # Format: postgresql://postgres.[ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres
       - key: DATABASE_URL
-        fromDatabase:
-          name: bcrss-db
-          property: connectionString
+        sync: false
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
       - key: CLOUDINARY_CLOUD_NAME
         sync: false
       - key: CLOUDINARY_API_KEY
         sync: false
       - key: CLOUDINARY_API_SECRET
         sync: false
-
-databases:
-  - name: bcrss-db
-    plan: free
-    databaseName: bcrss_db
-    user: bcrss_user

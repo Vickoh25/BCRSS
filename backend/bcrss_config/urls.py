@@ -15,6 +15,7 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
+from django.http import JsonResponse
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenRefreshView
@@ -33,6 +34,21 @@ from jobs.views import JobOpportunityViewSet
 from borrow_requests.views import BorrowRequestViewSet
 from reviews.views import ReviewViewSet
 
+
+def health_check(request):
+    """Health check endpoint to verify DB connectivity."""
+    from django.db import connection
+    import json
+    result = {'status': 'ok', 'db': 'unknown', 'engine': connection.settings_dict.get('ENGINE', '')}
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute('SELECT 1')
+            result['db'] = 'connected'
+    except Exception as e:
+        result['status'] = 'error'
+        result['db'] = str(e)
+    return JsonResponse(result, status=200 if result['status'] == 'ok' else 500)
+
 # Create router and register viewsets
 router = DefaultRouter()
 router.register(r'users', UserViewSet, basename='user')
@@ -44,6 +60,8 @@ router.register(r'reviews', ReviewViewSet, basename='review')
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    # Health check
+    path('api/health/', health_check, name='health-check'),
     # JWT Token endpoints
     path('api/token/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),

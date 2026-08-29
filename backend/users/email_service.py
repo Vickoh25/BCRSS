@@ -2,6 +2,7 @@
 BCRSS - Email Notification Service
 Sends transactional emails for key platform actions.
 Uses Django's SMTP email backend configured in settings.py.
+Emails are sent in a background thread so they never block the API response.
 """
 
 from django.core.mail import send_mail
@@ -9,9 +10,9 @@ from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 from django.conf import settings
 import logging
+import threading
 
 logger = logging.getLogger(__name__)
-
 
 def _send(subject, message, recipient_email, html_message=None):
     """Helper to send an email and log the result."""
@@ -29,6 +30,17 @@ def _send(subject, message, recipient_email, html_message=None):
     except Exception as e:
         logger.error(f"Failed to send email to {recipient_email}: {e}")
         return False
+
+
+def _send_async(subject, message, recipient_email, html_message=None):
+    """Send email in a background thread so SMTP timeouts never block the API."""
+    thread = threading.Thread(
+        target=_send,
+        args=(subject, message, recipient_email),
+        kwargs={'html_message': html_message},
+        daemon=True,
+    )
+    thread.start()
 
 
 # ──────────────────────────────────────────────
@@ -55,7 +67,7 @@ def send_borrow_request_notification(borrow_request):
         f"{settings.FRONTEND_URL or 'https://bcrss.vercel.app'}\n\n"
         f"— BCRSS Community Platform"
     )
-    return _send(subject, message, owner.email)
+    return _send_async(subject, message, owner.email)
 
 
 def send_borrow_approved_notification(borrow_request):
@@ -76,7 +88,7 @@ def send_borrow_approved_notification(borrow_request):
         f"Please arrange pickup and return the item by the agreed date.\n\n"
         f"— BCRSS Community Platform"
     )
-    return _send(subject, message, requester.email)
+    return _send_async(subject, message, requester.email)
 
 
 def send_borrow_declined_notification(borrow_request):
@@ -96,7 +108,7 @@ def send_borrow_declined_notification(borrow_request):
         f"Feel free to browse other available resources on the platform.\n\n"
         f"— BCRSS Community Platform"
     )
-    return _send(subject, message, requester.email)
+    return _send_async(subject, message, requester.email)
 
 
 def send_return_reminder(borrow_request):
@@ -118,7 +130,7 @@ def send_return_reminder(borrow_request):
         f"{settings.FRONTEND_URL or 'https://bcrss.vercel.app'}\n\n"
         f"— BCRSS Community Platform"
     )
-    return _send(subject, message, requester.email)
+    return _send_async(subject, message, requester.email)
 
 
 def send_returned_notification(borrow_request):
@@ -137,7 +149,7 @@ def send_returned_notification(borrow_request):
         f"Please confirm the item is back in good condition.\n\n"
         f"— BCRSS Community Platform"
     )
-    return _send(subject, message, owner.email)
+    return _send_async(subject, message, owner.email)
 
 
 # ──────────────────────────────────────────────
@@ -163,7 +175,7 @@ def send_dispute_raised_notification(borrow_request, raised_by):
         f"A community manager will review and resolve this shortly.\n\n"
         f"— BCRSS Community Platform"
     )
-    return _send(subject, message, recipient.email)
+    return _send_async(subject, message, recipient.email)
 
 
 def send_dispute_resolved_notification(borrow_request):
@@ -181,7 +193,7 @@ def send_dispute_resolved_notification(borrow_request):
     sent = False
     for user in [borrow_request.requester, borrow_request.owner]:
         if user.email:
-            _send(subject, message, user.email)
+            _send_async(subject, message, user.email)
             sent = True
     return sent
 
@@ -209,7 +221,7 @@ def send_job_application_notification(job_application):
         f"{settings.FRONTEND_URL or 'https://bcrss.vercel.app'}\n\n"
         f"— BCRSS Community Platform"
     )
-    return _send(subject, message, poster.email)
+    return _send_async(subject, message, poster.email)
 
 
 # ──────────────────────────────────────────────
@@ -231,7 +243,7 @@ def send_welcome_email(user):
         f"{settings.FRONTEND_URL or 'https://bcrss.vercel.app'}\n\n"
         f"— BCRSS Community Platform"
     )
-    return _send(subject, message, user.email)
+    return _send_async(subject, message, user.email)
 
 
 def send_password_reset_email(user, reset_token, uid):
@@ -255,4 +267,4 @@ def send_password_reset_email(user, reset_token, uid):
         f"If you didn't request this, you can safely ignore this email.\n\n"
         f"— BCRSS Community Platform"
     )
-    return _send(subject, message, user.email)
+    return _send_async(subject, message, user.email)

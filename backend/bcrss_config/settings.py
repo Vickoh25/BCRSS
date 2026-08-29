@@ -24,10 +24,18 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-64$#%5-k1#(#9+1p^i!_avl2))%)mck3si$fq(%l83y$+nud(f')
+# In production, SECRET_KEY MUST be set via environment variable.
+The insecure fallback is only allowed when DEBUG=True (development).
+_is_dev = os.getenv('DEBUG', 'True') == 'True'
+SECRET_KEY = os.getenv('SECRET_KEY', '')
+if not SECRET_KEY:
+    if _is_dev:
+        SECRET_KEY = 'django-insecure-dev-only-key-do-not-use-in-production'
+    else:
+        raise ValueError('SECRET_KEY environment variable is required in production (DEBUG=False).')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv('DEBUG', 'True') == 'True'
+DEBUG = _is_dev
 
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '*').split(',')
 
@@ -88,21 +96,78 @@ WSGI_APPLICATION = 'bcrss_config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-# Database configuration - uses SQLite in development, PostgreSQL in production
+# Database configuration - uses SQLite in development, PostgreSQL (Supabase) in production
 import dj_database_url
+import logging
+
+logger = logging.getLogger(__name__)
 
 DATABASE_URL = os.getenv('DATABASE_URL', '')
 
+def _parse_database_url(url):
+    """
+    Parse a DATABASE_URL that may contain unencoded special characters
+    in the password (@, ?, #, etc.).  Falls back to dj_database_url when
+    the URL is clean; builds the config dict manually otherwise.
+    """
+    import re, urllib.parse
+
+    # --- Manual parse that handles @ and ? inside passwords ---------------
+    scheme_match = re.match(r'^(postgres(ql)?://)', url)
+    if scheme_match:
+        scheme = scheme_match.group(1)
+        rest = url[len(scheme):]
+        # Match the real host@ (hostname is word-chars/dots/hyphens + optional :port + optional /path)
+        host_match = re.search(r'@([a-zA-Z0-9._-]+(?::\d+)?(?:/.*)?)$', rest)
+        if host_match:
+            creds = rest[:host_match.start()]
+            host_part = host_match.group(1)  # e.g. "db.xxx.supabase.co:5432/postgres"
+            colon = creds.find(':')
+            if colon != -1:
+                user = urllib.parse.unquote(creds[:colon])
+                password = urllib.parse.unquote(creds[colon + 1:])
+                # Parse host_part → hostname, port, dbname
+                hp = urllib.parse.urlparse(f'//{host_part}')
+                hostname = hp.hostname or ''
+                port = hp.port or 5432
+                dbname = hp.path.lstrip('/') or 'postgres'
+                return {
+                    'ENGINE': 'django.db.backends.postgresql',
+                    'NAME': dbname,
+                    'USER': user,
+                    'PASSWORD': password,
+                    'HOST': hostname,
+                    'PORT': port,
+                    'CONN_MAX_AGE': 600,
+                    'CONN_HEALTH_CHECKS': False,
+                    'OPTIONS': {},
+                }
+
+    # --- Clean URL: use dj_database_url as before -------------------------
+    return dj_database_url.config(url=url, conn_max_age=600,
+                                  ssl_require=os.getenv('DEBUG', 'True') != 'True')
+
 db_config = None
 if DATABASE_URL:
-    db_config = dj_database_url.config(
-        conn_max_age=600,
-        ssl_require=os.getenv('DEBUG', 'True') != 'True',
-    )
+    try:
+        db_config = _parse_database_url(DATABASE_URL)
+    except Exception as exc:
+        logger.error('Failed to parse DATABASE_URL: %s', exc)
+        db_config = None
 
-# dj_database_url.config() can return a dict with empty NAME when the
-# URL is set but malformed/unreachable — validate before using it.
-if db_config and db_config.get('NAME'):
+    if not db_config or not db_config.get('NAME'):
+        logger.warning('DATABASE_URL is set but could not be parsed. Falling back to SQLite.')
+        db_config = None
+    else:
+        # Ensure Supabase-specific options
+        opts = db_config.setdefault('OPTIONS', {})
+        if 'sslmode' not in opts and 'sslmode' not in DATABASE_URL:
+            opts.setdefault('sslmode', 'require')
+        opts.setdefault('connect_timeout', 10)
+        logger.info('Database connected: engine=%s host=%s name=%s',
+                     db_config.get('ENGINE'), db_config.get('HOST'), db_config.get('NAME'))
+
+if db_config:
     DATABASES = {'default': db_config}
 else:
     # Fallback to SQLite when DATABASE_URL is unset, empty, or invalid
@@ -112,6 +177,7 @@ else:
             'NAME': BASE_DIR / 'db.sqlite3',
         }
     }
+    logger.info('Using SQLite fallback database: %s', DATABASES['default']['NAME'])
 
 
 # Password validation
@@ -173,7 +239,8 @@ if _cors_raw.strip():
 else:
     CORS_ALLOWED_ORIGINS = _DEFAULT_CORS_ORIGINS
 
-CORS_ALLOW_ALL_ORIGINS = os.getenv('CORS_ALLOW_ALL_ORIGINS', 'False') == 'True'
+# SECURITY: Never allow all origins — use explicit allowlist only.
+CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_HEADERS = [
     'accept',
@@ -185,6 +252,21 @@ CORS_ALLOW_HEADERS = [
     'x-csrftoken',
     'x-requested-with',
 ]
+
+# ─── Security Headers ────────────────────────────────────────
+# These protect against common web attacks when behind a reverse proxy.
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = 'DENY'
+
+# Only enforce HTTPS in production
+if not _is_dev:
+    SECURE_SSL_REDIRECT = True
+    SECURE_HSTS_SECONDS = 31536000   # 1 year
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
 
 # REST Framework Configuration
 REST_FRAMEWORK = {
@@ -198,7 +280,22 @@ REST_FRAMEWORK = {
     'PAGE_SIZE': 20,
     'DEFAULT_FILTER_BACKENDS': ['rest_framework.filters.SearchFilter', 'rest_framework.filters.OrderingFilter'],
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    # Rate limiting (throttling) to prevent brute-force attacks
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '30/minute',     # Unauthenticated: 30 requests per minute
+        'user': '120/minute',    # Authenticated: 120 requests per minute
+        'auth': '10/minute',     # Login/register: 10 attempts per minute
+    },
+    'EXCEPTION_HANDLER': 'bcrss_config.exception_handlers.custom_exception_handler',
 }
+
+# Custom error handlers (JSON responses with CORS headers on 404/500)
+handler404 = 'bcrss_config.exception_handlers.custom_404_handler'
+handler500 = 'bcrss_config.exception_handlers.custom_500_handler'
 
 # JWT Configuration
 from datetime import timedelta

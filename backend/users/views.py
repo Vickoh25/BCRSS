@@ -80,6 +80,8 @@ class UserViewSet(viewsets.ModelViewSet):
         if not self._is_role_admin(request.user):
             return Response({'detail': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
         user = self.get_object()
+        if user.id == request.user.id:
+            return Response({'detail': 'You cannot demote yourself.'}, status=status.HTTP_400_BAD_REQUEST)
         user.role = 'Member'
         user.save()
         serializer = UserSerializer(user)
