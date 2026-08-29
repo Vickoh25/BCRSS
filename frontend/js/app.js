@@ -69,6 +69,7 @@ const APP = {
       localStorage.removeItem('bcrss_job_applications');
       localStorage.removeItem('bcrss_requests');
       localStorage.removeItem('bcrss_reviews');
+      localStorage.removeItem('bcrss_current_tab');
       console.log('No auth token — cleared stale localStorage. Login/register to begin.');
     }
 
@@ -169,6 +170,18 @@ const APP = {
       if (jobApplications) s.jobApplications = jobApplications;
       if (requests) s.requests = requests;
       if (reviews) s.reviews = reviews;
+
+      // Restore the active tab so page refreshes don't reset navigation
+      const savedTab = localStorage.getItem('bcrss_current_tab');
+      if (savedTab) {
+        // Don't restore protected tabs if user is not logged in
+        const protectedTabs = ['dashboard', 'admin'];
+        if (protectedTabs.includes(savedTab) && !s.currentUser) {
+          s.currentTab = 'home';
+        } else {
+          s.currentTab = savedTab;
+        }
+      }
     } catch (e) {
       console.warn('Failed to load from localStorage:', e);
     }
@@ -184,6 +197,7 @@ const APP = {
       localStorage.setItem('bcrss_job_applications', JSON.stringify(s.jobApplications));
       localStorage.setItem('bcrss_requests', JSON.stringify(s.requests));
       localStorage.setItem('bcrss_reviews', JSON.stringify(s.reviews));
+      localStorage.setItem('bcrss_current_tab', s.currentTab);
     } catch (e) {
       console.warn('Failed to save to localStorage:', e);
     }
@@ -444,6 +458,7 @@ const APP = {
     localStorage.removeItem('auth_token');
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('bcrss_current_user');
+    localStorage.removeItem('bcrss_current_tab');
     apiClient.token = null;
 
     // Reset all state to default
