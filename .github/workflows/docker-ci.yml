@@ -188,7 +188,7 @@ jobs:
       - name: Run Tests
         run: |
           echo "Running tests..."
-          docker compose exec -T backend python manage.py test
+          docker compose exec -T backend python manage.py test --keepdb
           echo "Tests passed"
 
       - name: Cleanup
