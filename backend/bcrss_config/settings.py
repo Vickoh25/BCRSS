@@ -25,7 +25,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
 # In production, SECRET_KEY MUST be set via environment variable.
-The insecure fallback is only allowed when DEBUG=True (development).
+# The insecure fallback is only allowed when DEBUG=True (development).
 _is_dev = os.getenv('DEBUG', 'True') == 'True'
 SECRET_KEY = os.getenv('SECRET_KEY', '')
 if not SECRET_KEY:
