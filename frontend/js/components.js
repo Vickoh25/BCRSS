@@ -53,6 +53,7 @@ const Icons = {
   externalLink: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" x2="21" y1="14" y2="3"/></svg>',
   quote: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" stroke="none" class="icon"><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"/><path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"/></svg>',
   thumbsUp: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon"><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2h0a3.13 3.13 0 0 1 3 3.88Z"/></svg>',
+  camera: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>',
 };
 
 // ==================== ICON HELPER ====================
@@ -62,8 +63,27 @@ function icon(name, sizeClass = 'w-5 h-5') {
   return svg.replace('class="icon"', `class="${sizeClass}"`);
 }
 
+// ==================== XSS PROTECTION ====================
+// Escape HTML special characters to prevent injection via user-supplied text.
+function esc(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // ==================== ITEM IMAGE PLACEHOLDER ====================
-function renderItemImage(imageCode, category, sizeClass) {
+function renderItemImage(imageCode, category, sizeClass, photoUrl) {
+  // If a user-uploaded photo is available, show it
+  if (photoUrl) {
+    return `<div class="icon-placeholder ${sizeClass || 'h-44 w-full'}" style="padding:0;overflow:hidden;background:var(--neutral-100)">
+      <img src="${photoUrl}" alt="Item photo" style="width:100%;height:100%;object-fit:cover;display:block">
+    </div>`;
+  }
+
   let bgClass = 'bg-[#f5f4ef] text-neutral-400';
   let IconComponent = null;
 
@@ -92,13 +112,17 @@ function renderItemImage(imageCode, category, sizeClass) {
 function renderHeader(state) {
   const { currentUser, currentTab } = state;
   const navItems = [
-    { id: 'home', label: 'Home' },
-    { id: 'resources', label: 'Resources' },
-    { id: 'jobs', label: 'Jobs' },
-    { id: 'dashboard', label: 'Dashboard' }
+    { id: 'home', label: 'Home' }
   ];
-  if (currentUser && currentUser.role === 'Admin') {
-    navItems.push({ id: 'admin', label: 'Admin' });
+  if (currentUser) {
+    navItems.push(
+      { id: 'resources', label: 'Resources' },
+      { id: 'jobs', label: 'Jobs' },
+      { id: 'dashboard', label: 'Dashboard' }
+    );
+    if (currentUser.role === 'Admin') {
+      navItems.push({ id: 'admin', label: 'Admin' });
+    }
   }
 
   const initials = currentUser
@@ -172,18 +196,18 @@ function renderUserDropdown(state) {
     </div>
 
     <div class="dropdown-section">
-      <button class="dropdown-item" onclick="APP.changeTab('dashboard'); APP.toggleUserDropdown();">
+      <button class="dropdown-item" onclick="APP.changeTab('dashboard')">
         ${icon('users', 'w-4 h-4')}<span>My Dashboard</span>
       </button>
       ${currentUser.role === 'Admin' ? `
-      <button class="dropdown-item" onclick="APP.changeTab('admin'); APP.toggleUserDropdown();">
+      <button class="dropdown-item" onclick="APP.changeTab('admin')">
         ${icon('settings', 'w-4 h-4')}<span>Admin Panel</span>
       </button>` : ''}
     </div>
 
     <div style="padding:var(--space-1);border-top:1px solid var(--color-border-light)">
       <button class="dropdown-item" style="color:var(--color-error)"
-        onclick="APP.handleLogout(); APP.toggleUserDropdown();">
+        onclick="APP.handleLogout()">
         ${icon('logOut', 'w-4 h-4')}<span>Log Out</span>
       </button>
     </div>
@@ -193,19 +217,25 @@ function renderUserDropdown(state) {
 function renderMobileDrawer(state) {
   const { currentUser, currentTab } = state;
   const navItems = [
-    { id: 'home', label: 'Home' },
-    { id: 'resources', label: 'Resources' },
-    { id: 'jobs', label: 'Jobs' },
-    { id: 'dashboard', label: 'Dashboard' },
-    { id: 'admin', label: 'Admin' }
+    { id: 'home', label: 'Home' }
   ];
+  if (currentUser) {
+    navItems.push(
+      { id: 'resources', label: 'Resources' },
+      { id: 'jobs', label: 'Jobs' },
+      { id: 'dashboard', label: 'Dashboard' }
+    );
+    if (currentUser.role === 'Admin') {
+      navItems.push({ id: 'admin', label: 'Admin' });
+    }
+  }
 
   return `
   <div class="mobile-drawer">
     <div style="display:flex;flex-direction:column;gap:var(--space-1)">
       ${navItems.map(item => `
         <button style="width:100%;text-align:left;padding:var(--space-2) var(--space-3);border-radius:var(--radius-md);font-size:var(--fs-sm);font-weight:500;border:none;cursor:pointer;transition:all var(--duration-fast) ease;font-family:var(--font-sans);${currentTab === item.id ? 'background:var(--color-primary-light);color:var(--color-primary);' : 'background:transparent;color:var(--color-text-secondary);'}"
-          onclick="APP.changeTab('${item.id}'); APP.toggleMobileMenu();">
+          onclick="APP.changeTab('${item.id}')">
           ${item.label}
         </button>
       `).join('')}
@@ -213,12 +243,12 @@ function renderMobileDrawer(state) {
 
     <div style="padding-top:var(--space-4);border-top:1px solid var(--color-border-light);margin-top:var(--space-4);display:flex;flex-direction:column;gap:var(--space-3)">
       <button class="btn btn-primary w-full" style="width:100%;justify-content:center"
-        onclick="APP.openModal('share'); APP.toggleMobileMenu();">
+        onclick="APP.openModal('share')">
         ${icon('plus', 'w-4 h-4')}<span>Share Resource</span>
       </button>
       ${!currentUser ? `
         <button class="btn btn-secondary w-full" style="width:100%;justify-content:center"
-          onclick="APP.openModal('login'); APP.toggleMobileMenu();">
+          onclick="APP.openModal('login')">
           Log In
         </button>
       ` : ''}
@@ -227,7 +257,7 @@ function renderMobileDrawer(state) {
     ${currentUser ? `
     <div style="padding-top:var(--space-3);margin-top:var(--space-3);border-top:1px solid var(--color-border-light)">
       <button class="dropdown-item" style="color:var(--color-error)"
-        onclick="APP.handleLogout(); APP.toggleMobileMenu();">
+        onclick="APP.handleLogout()">
         ${icon('logOut', 'w-4 h-4')}<span>Log Out</span>
       </button>
     </div>` : ''}
@@ -343,6 +373,54 @@ function renderHomePage(state) {
         </div>
       </div>
     </div>
+
+    <!-- FOOTER -->
+    <footer class="app-footer">
+      <div class="container">
+        <div class="footer-grid">
+          <div>
+            <div class="footer-brand">
+              <div style="display:flex;align-items:center;gap:var(--space-2);margin-bottom:var(--space-3)">
+                <div style="width:36px;height:36px;border-radius:var(--radius-md);background:var(--color-primary);color:white;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(13,148,136,0.25)">${icon('handshake', 'w-5 h-5')}</div>
+                <span>BCRSS</span>
+              </div>
+            </div>
+            <p class="footer-desc">Empowering the Baraton community through shared resources and opportunities. Built for neighborhood solidarity.</p>
+          </div>
+          <div>
+            <div class="footer-heading">Quick Links</div>
+            <ul class="footer-links">
+              <li><a href="#" onclick="event.preventDefault();APP.changeTab('resources')">Browse Resources</a></li>
+              <li><a href="#" onclick="event.preventDefault();APP.changeTab('jobs')">Find Jobs</a></li>
+              <li><a href="#" onclick="event.preventDefault();APP.changeTab('dashboard')">My Dashboard</a></li>
+            </ul>
+          </div>
+          <div>
+            <div class="footer-heading">Community</div>
+            <ul class="footer-links">
+              <li><a href="#" onclick="event.preventDefault();APP.openModal('share')">Share Resource</a></li>
+              <li><a href="#" onclick="event.preventDefault();APP.openModal('postJob')">Post a Job</a></li>
+              <li><a href="#" onclick="event.preventDefault();APP.handleLogout()">Log Out</a></li>
+            </ul>
+          </div>
+          <div>
+            <div class="footer-heading">Contact</div>
+            <ul class="footer-links">
+              <li><a href="#">UEAB, Nandi County</a></li>
+              <li><a href="#">svicon@ueab.ac.ke</a></li>
+              <li><a href="#">+254 712 345678</a></li>
+            </ul>
+          </div>
+        </div>
+        <div class="footer-bottom">
+          <div>&copy; 2026 BCRSS — Baraton Community Resource Sharing System. All rights reserved.</div>
+          <div style="display:flex;gap:var(--space-4)">
+            <a href="#" style="color:var(--neutral-500);text-decoration:none;font-size:var(--fs-xs)">Privacy</a>
+            <a href="#" style="color:var(--neutral-500);text-decoration:none;font-size:var(--fs-xs)">Terms</a>
+          </div>
+        </div>
+      </div>
+    </footer>
   </div>`;
 }
 
@@ -585,7 +663,7 @@ function renderLandingPage(state) {
     <!-- HERO: Split Screen Design -->
     <section class="landing-hero">
       <div class="landing-hero-left">
-        <div style="display:flex;flex-direction:column;gap:var(--space-8);height:100%;justify-content:center;padding:var(--space-16)">
+        <div style="display:flex;flex-direction:column;gap:var(--space-8);height:100%;justify-content:center">
           <div>
             <div class="landing-badge">
               ${icon('handshake', 'w-4 h-4')}
@@ -765,8 +843,8 @@ function renderLandingPage(state) {
           <button class="btn btn-primary btn-lg" onclick="APP.openModal('register')">
             <span>Create Free Account</span>${icon('arrowRight', 'w-4 h-4')}
           </button>
-          <button class="btn btn-outline btn-lg" style="border-color:white;color:white" onclick="APP.changeTab('resources')">
-            <span>Browse Resources</span>
+          <button class="btn btn-outline btn-lg" style="border-color:white;color:white" onclick="APP.openModal('login')">
+            <span>Log In to Browse</span>
           </button>
         </div>
       </div>
@@ -779,7 +857,7 @@ function renderLandingPage(state) {
           <div>
             <div class="footer-brand">
               <div style="display:flex;align-items:center;gap:var(--space-2);margin-bottom:var(--space-3)">
-                <div style="width:36px;height:36px;border-radius:var(--radius-md);background:var(--sky-blue);color:var(--pistel-blue);display:flex;align-items:center;justify-content:center">${icon('handshake', 'w-5 h-5')}</div>
+                <div style="width:36px;height:36px;border-radius:var(--radius-md);background:var(--color-primary);color:white;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(13,148,136,0.25)">${icon('handshake', 'w-5 h-5')}</div>
                 <span>BCRSS</span>
               </div>
             </div>
@@ -857,7 +935,7 @@ function renderResourcesPage(state) {
           <div style="display:grid;grid-template-columns:1fr;gap:var(--space-3)">
             <div class="search-wrapper" style="grid-column:span 1">
               <span class="search-icon">${icon('search', 'w-4 h-4')}</span>
-              <input type="text" class="search-input" placeholder="Search resources..." value="${state.resourceSearch}"
+              <input type="text" class="search-input" placeholder="Search resources..." value="${esc(state.resourceSearch)}"
                 oninput="APP.setResourceSearch(this.value)">
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-3)">
@@ -896,31 +974,32 @@ function renderResourcesPage(state) {
 function renderResourceCard(item, currentUser) {
   const isOwner = currentUser && item.ownerId === currentUser.id;
   const catClass = item.category === 'farm tools' ? 'cat-tag-farm' : item.category === 'textbooks' ? 'cat-tag-textbook' : 'cat-tag-household';
+  const photoUrl = (typeof APP !== 'undefined' && APP.getResourceImage) ? APP.getResourceImage(item.id) : null;
 
   return `<div class="resource-card group" onclick="event.stopPropagation()">
     <div class="resource-card-image">
-      ${renderItemImage(item.imageCode, item.category, 'h-44 w-full')}
-      <span style="position:absolute;top:var(--space-3);left:var(--space-3);z-index:10" class="badge ${item.status === 'Available' ? 'badge-available' : 'badge-borrowed'}">${item.status}</span>
-      <span style="position:absolute;bottom:var(--space-3);right:var(--space-3);background:rgba(255,255,255,0.9);backdrop-filter:blur(4px);padding:2px 10px;border-radius:var(--radius-sm);border:1px solid var(--color-border);font-size:11px;font-weight:600;color:var(--color-text-secondary)">${item.condition}</span>
+      ${renderItemImage(item.imageCode, item.category, 'h-44 w-full', photoUrl)}
+      <span style="position:absolute;top:var(--space-3);left:var(--space-3);z-index:10" class="badge ${item.status === 'Available' ? 'badge-available' : 'badge-borrowed'}">${esc(item.status)}</span>
+      <span style="position:absolute;bottom:var(--space-3);right:var(--space-3);background:rgba(255,255,255,0.9);backdrop-filter:blur(4px);padding:2px 10px;border-radius:var(--radius-sm);border:1px solid var(--color-border);font-size:11px;font-weight:600;color:var(--color-text-secondary)">${esc(item.condition)}</span>
     </div>
     <div class="resource-card-body">
       <div class="resource-card-meta">
-        <span class="cat-tag ${catClass}">${item.category}</span>
+        <span class="cat-tag ${catClass}">${esc(item.category)}</span>
         <span style="color:var(--color-text-tertiary);font-size:12px">·</span>
-        <span style="font-size:11px;color:var(--color-text-secondary);font-weight:500">${item.lendingType}</span>
+        <span style="font-size:11px;color:var(--color-text-secondary);font-weight:500">${esc(item.lendingType)}</span>
       </div>
-      <h3 class="line-clamp-1" style="font-family:var(--font-serif);font-size:var(--fs-lg);font-weight:700;color:var(--color-text);margin-bottom:var(--space-2)">${item.title}</h3>
-      <p class="line-clamp-2" style="font-size:var(--fs-sm);color:var(--color-text-secondary);line-height:1.7;flex:1">${item.description}</p>
+      <h3 class="line-clamp-1" style="font-family:var(--font-serif);font-size:var(--fs-lg);font-weight:700;color:var(--color-text);margin-bottom:var(--space-2)">${esc(item.title)}</h3>
+      <p class="line-clamp-2" style="font-size:var(--fs-sm);color:var(--color-text-secondary);line-height:1.7;flex:1">${esc(item.description)}</p>
 
       <div style="margin-top:var(--space-4);padding-top:var(--space-3);border-top:1px solid var(--color-border-light);display:flex;flex-direction:column;gap:var(--space-2);font-size:var(--fs-xs);color:var(--color-text-tertiary)">
         <div style="display:flex;align-items:center;gap:var(--space-2)">
-          ${icon('mapPin', 'w-3.5 h-3.5')}<span>${item.location}</span>
+          ${icon('mapPin', 'w-3.5 h-3.5')}<span>${esc(item.location)}</span>
         </div>
         <div style="display:flex;align-items:center;justify-content:space-between">
           <div style="display:flex;align-items:center;gap:var(--space-1)">
-            ${icon('user', 'w-3 h-3')}<span style="font-weight:500;color:var(--color-text-secondary)">${isOwner ? 'You' : item.ownerName}</span>
+            ${icon('user', 'w-3 h-3')}<span style="font-weight:500;color:var(--color-text-secondary)">${isOwner ? 'You' : esc(item.ownerName)}</span>
           </div>
-          <span>${item.listedDate}</span>
+          <span>${esc(item.listedDate)}</span>
         </div>
       </div>
 
@@ -964,7 +1043,7 @@ function renderJobsPage(state) {
           <div style="display:grid;grid-template-columns:2fr 1fr;gap:var(--space-3)">
             <div class="search-wrapper">
               <span class="search-icon">${icon('search', 'w-4 h-4')}</span>
-              <input type="text" class="search-input" placeholder="Search jobs..." value="${state.jobSearch}"
+              <input type="text" class="search-input" placeholder="Search jobs..." value="${esc(state.jobSearch)}"
                 oninput="APP.setJobSearch(this.value)">
             </div>
             <select class="select-field" onchange="APP.setJobCategory(this.value)">
@@ -1009,18 +1088,18 @@ function renderJobCard(job, currentUser) {
   return `<div class="job-card group">
     <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:var(--space-3)">
       <div>
-        <span class="cat-tag" style="${badgeColor}">${job.category}</span>
-        <h3 style="font-family:var(--font-serif);font-size:var(--fs-lg);font-weight:700;color:var(--color-text);margin-top:var(--space-3);transition:color var(--duration-fast) ease">${job.title}</h3>
+        <span class="cat-tag" style="${badgeColor}">${esc(job.category)}</span>
+        <h3 style="font-family:var(--font-serif);font-size:var(--fs-lg);font-weight:700;color:var(--color-text);margin-top:var(--space-3);transition:color var(--duration-fast) ease">${esc(job.title)}</h3>
       </div>
-      <span class="badge ${job.status === 'Open' ? 'badge-open' : 'badge-filled'}">${job.status}</span>
+      <span class="badge ${job.status === 'Open' ? 'badge-open' : 'badge-filled'}">${esc(job.status)}</span>
     </div>
-    <p class="line-clamp-3" style="font-size:var(--fs-sm);color:var(--color-text-secondary);line-height:1.7;flex:1;margin-bottom:var(--space-4)">${job.description}</p>
+    <p class="line-clamp-3" style="font-size:var(--fs-sm);color:var(--color-text-secondary);line-height:1.7;flex:1;margin-bottom:var(--space-4)">${esc(job.description)}</p>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-3);padding-top:var(--space-4);border-top:1px solid var(--color-border-light);font-size:var(--fs-xs);color:var(--color-text-tertiary)">
-      <div style="display:flex;align-items:center;gap:var(--space-2)">${icon('mapPin', 'w-3.5 h-3.5')}<span>${job.location}</span></div>
-      <div style="display:flex;align-items:center;gap:var(--space-2);justify-content:flex-end">${icon('dollarSign', 'w-3.5 h-3.5')}<span style="font-weight:600;color:var(--color-text)">${job.rate}</span></div>
-      <div style="display:flex;align-items:center;gap:var(--space-2)">${icon('clock', 'w-3.5 h-3.5')}<span>${job.duration}</span></div>
-      <div style="display:flex;align-items:center;gap:var(--space-2);justify-content:flex-end">${icon('user', 'w-3 h-3')}<span>By ${isOwner ? 'You' : job.postedBy}</span></div>
+      <div style="display:flex;align-items:center;gap:var(--space-2)">${icon('mapPin', 'w-3.5 h-3.5')}<span>${esc(job.location)}</span></div>
+      <div style="display:flex;align-items:center;gap:var(--space-2);justify-content:flex-end">${icon('dollarSign', 'w-3.5 h-3.5')}<span style="font-weight:600;color:var(--color-text)">${esc(job.rate)}</span></div>
+      <div style="display:flex;align-items:center;gap:var(--space-2)">${icon('clock', 'w-3.5 h-3.5')}<span>${esc(job.duration)}</span></div>
+      <div style="display:flex;align-items:center;gap:var(--space-2);justify-content:flex-end">${icon('user', 'w-3 h-3')}<span>By ${isOwner ? 'You' : esc(job.postedBy)}</span></div>
     </div>
 
     ${job.status === 'Open' && !isOwner ? `
@@ -1169,11 +1248,11 @@ function renderDashboardRequests(state) {
             const reminderSent = req.reminder_sent;
 
             return `<tr>
-              <td><span style="font-weight:500;color:var(--color-text);font-size:var(--fs-sm)">${req.itemTitle}</span></td>
-              <td style="color:var(--color-text-secondary);font-size:var(--fs-sm)">${req.requesterName}</td>
-              <td style="color:var(--color-text-tertiary);font-size:var(--fs-sm)">${req.startDate} → ${req.endDate}</td>
+              <td><span style="font-weight:500;color:var(--color-text);font-size:var(--fs-sm)">${esc(req.itemTitle)}</span></td>
+              <td style="color:var(--color-text-secondary);font-size:var(--fs-sm)">${esc(req.requesterName)}</td>
+              <td style="color:var(--color-text-tertiary);font-size:var(--fs-sm)">${esc(req.startDate)} → ${esc(req.endDate)}</td>
               <td>
-                <span class="badge ${statusColors[req.status] || 'badge-pending'}">${req.status}</span>
+                <span class="badge ${statusColors[req.status] || 'badge-pending'}">${esc(req.status)}</span>
                 ${isOverdue ? `<span class="badge" style="background:var(--color-error-bg);color:var(--color-error);margin-left:4px">Overdue</span>` : ''}
                 ${reminderSent ? `<span class="badge" style="background:#eef2ff;color:#4f46e5;margin-left:4px">Reminder Sent</span>` : ''}
               </td>
@@ -1186,7 +1265,7 @@ function renderDashboardRequests(state) {
                     <button class="btn btn-sm btn-secondary" onclick="APP.declineRequest('${req.id}');event.stopPropagation()">Decline</button>
                   ` : isOwner && req.status === 'Approved' ? `
                     ${isOverdue && !reminderSent ? `
-                      <button class="btn btn-sm" style="background:var(--neutral-800);color:white" onclick="APP.sendReminder('${req.id}');event.stopPropagation()">Send Reminder</button>
+                      <button class="btn btn-sm" style="background:var(--color-primary);color:white" onclick="APP.sendReminder('${req.id}');event.stopPropagation()">Send Reminder</button>
                     ` : ''}
                     <button class="btn btn-sm btn-outline" onclick="APP.markReturned('${req.id}');event.stopPropagation()">Mark Returned</button>
                     ${!req.is_disputed ? `<button class="btn btn-sm" style="background:var(--color-error-bg);color:var(--color-error);border:none" onclick="APP.raiseDispute('${req.id}');event.stopPropagation()">Dispute</button>` : ''}
@@ -1265,10 +1344,10 @@ function renderDashboardApplications(state) {
             const personId = receivedByMe ? app.applicantId : app.employerId;
             const role = receivedByMe ? 'Worker' : 'Employer';
             return `<tr>
-              <td><span style="font-weight:500;color:var(--color-text);font-size:var(--fs-sm)">${app.jobTitle}</span></td>
-              <td style="color:var(--color-text-secondary);font-size:var(--fs-sm)">${personName}</td>
-              <td style="color:var(--color-text-tertiary);font-size:var(--fs-sm);max-width:360px;white-space:normal">${app.pitch}</td>
-              <td><span class="badge badge-pending">${app.status}</span></td>
+              <td><span style="font-weight:500;color:var(--color-text);font-size:var(--fs-sm)">${esc(app.jobTitle)}</span></td>
+              <td style="color:var(--color-text-secondary);font-size:var(--fs-sm)">${esc(personName)}</td>
+              <td style="color:var(--color-text-tertiary);font-size:var(--fs-sm);max-width:360px;white-space:normal">${esc(app.pitch)}</td>
+              <td><span class="badge badge-pending">${esc(app.status)}</span></td>
               <td style="text-align:right">
                 <span style="font-size:var(--fs-sm);color:var(--color-text-tertiary)">Job applications do not receive reviews</span>
               </td>
@@ -1303,10 +1382,10 @@ function renderDashboardReviews(state) {
             const isReceived = r.target_user && r.target_user.id === currentUser.id;
             return `<tr>
               <td><span class="badge ${isReceived ? 'badge-approved' : 'badge-member'}">${isReceived ? 'Received' : 'Given'}</span></td>
-              <td style="color:var(--color-text-secondary);font-size:var(--fs-sm)">${isReceived ? r.reviewerName : r.targetName}</td>
+              <td style="color:var(--color-text-secondary);font-size:var(--fs-sm)">${isReceived ? esc(r.reviewerName) : esc(r.targetName)}</td>
               <td style="color:#f59e0b">${'★'.repeat(r.rating)}${'☆'.repeat(5 - r.rating)}</td>
-              <td style="color:var(--color-text-secondary);font-size:var(--fs-sm)">${r.reviewerRole}</td>
-              <td style="color:var(--color-text-tertiary);font-size:var(--fs-sm);max-width:380px;white-space:normal">${r.comment}</td>
+              <td style="color:var(--color-text-secondary);font-size:var(--fs-sm)">${esc(r.reviewerRole)}</td>
+              <td style="color:var(--color-text-tertiary);font-size:var(--fs-sm);max-width:380px;white-space:normal">${esc(r.comment)}</td>
             </tr>`;
           }).join('')}
         </tbody>
@@ -1359,7 +1438,7 @@ function renderAdminResources(state) {
   return `
   <div class="flex" style="margin-bottom:var(--space-6)">
     <div class="search-wrapper" style="max-width:400px">
-      <span class="search-icon">${icon('search', 'w-4 h-4')}</span>              <input type="text" class="search-input" placeholder="Search resources..." value="${state.adminSearch}"
+      <span class="search-icon">${icon('search', 'w-4 h-4')}</span>              <input type="text" class="search-input" placeholder="Search resources..." value="${esc(state.adminSearch)}"
                 oninput="APP.setAdminSearch(this.value)">
     </div>
   </div>
@@ -1369,10 +1448,10 @@ function renderAdminResources(state) {
         <thead><tr><th>Title</th><th>Owner</th><th>Category</th><th>Status</th><th style="text-align:right">Actions</th></tr></thead>
         <tbody>
           ${filtered.map(r => `<tr>
-            <td><span style="font-weight:500;color:var(--color-text);font-size:var(--fs-sm)">${r.title}</span></td>
-            <td style="color:var(--color-text-secondary);font-size:var(--fs-sm)">${r.ownerName}</td>
-            <td><span style="font-size:11px">${r.category}</span></td>
-            <td><span class="badge ${r.status === 'Available' ? 'badge-available' : 'badge-borrowed'}">${r.status}</span></td>
+            <td><span style="font-weight:500;color:var(--color-text);font-size:var(--fs-sm)">${esc(r.title)}</span></td>
+            <td style="color:var(--color-text-secondary);font-size:var(--fs-sm)">${esc(r.ownerName)}</td>
+            <td><span style="font-size:11px">${esc(r.category)}</span></td>
+            <td><span class="badge ${r.status === 'Available' ? 'badge-available' : 'badge-borrowed'}">${esc(r.status)}</span></td>
             <td style="text-align:right">
               <button class="btn btn-sm" style="background:var(--color-error);color:white" onclick="APP.deleteResource('${r.id}')">Delete</button>
             </td>
@@ -1400,10 +1479,10 @@ function renderAdminJobs(state) {
         <thead><tr><th>Title</th><th>Posted By</th><th>Category</th><th>Status</th><th style="text-align:right">Actions</th></tr></thead>
         <tbody>
           ${filtered.map(j => `<tr>
-            <td><span style="font-weight:500;color:var(--color-text);font-size:var(--fs-sm)">${j.title}</span></td>
-            <td style="color:var(--color-text-secondary);font-size:var(--fs-sm)">${j.postedBy}</td>
-            <td><span style="font-size:11px">${j.category}</span></td>
-            <td><span class="badge ${j.status === 'Open' ? 'badge-open' : 'badge-filled'}">${j.status}</span></td>
+            <td><span style="font-weight:500;color:var(--color-text);font-size:var(--fs-sm)">${esc(j.title)}</span></td>
+            <td style="color:var(--color-text-secondary);font-size:var(--fs-sm)">${esc(j.postedBy)}</td>
+            <td><span style="font-size:11px">${esc(j.category)}</span></td>
+            <td><span class="badge ${j.status === 'Open' ? 'badge-open' : 'badge-filled'}">${esc(j.status)}</span></td>
             <td style="text-align:right">
               <button class="btn btn-sm" style="background:var(--color-error);color:white" onclick="APP.deleteJob('${j.id}')">Delete</button>
             </td>
@@ -1428,10 +1507,10 @@ function renderAdminRequests(state) {
         <thead><tr><th>Item</th><th>Requester</th><th>Owner</th><th>Status</th><th>Issues</th><th style="text-align:right">Actions</th></tr></thead>
         <tbody>
           ${requests.length > 0 ? requests.map(req => `<tr>
-            <td><span style="font-weight:500;color:var(--color-text);font-size:var(--fs-sm)">${req.itemTitle}</span></td>
-            <td style="color:var(--color-text-secondary);font-size:var(--fs-sm)">${req.requesterName}</td>
-            <td style="color:var(--color-text-secondary);font-size:var(--fs-sm)">${req.ownerId}</td>
-            <td><span class="badge ${statusColors[req.status] || 'badge-pending'}">${req.status}</span></td>
+            <td><span style="font-weight:500;color:var(--color-text);font-size:var(--fs-sm)">${esc(req.itemTitle)}</span></td>
+            <td style="color:var(--color-text-secondary);font-size:var(--fs-sm)">${esc(req.requesterName)}</td>
+            <td style="color:var(--color-text-secondary);font-size:var(--fs-sm)">${esc(req.ownerId)}</td>
+            <td><span class="badge ${statusColors[req.status] || 'badge-pending'}">${esc(req.status)}</span></td>
             <td>
               ${req.is_disputed ? `<span class="badge" style="background:var(--color-error-bg);color:var(--color-error)">Disputed</span>` : `<span style="color:var(--color-text-tertiary)">None</span>`}
             </td>
@@ -1562,13 +1641,13 @@ function renderAdminUsers(state) {
           ${filtered.map(u => `<tr>
             <td>
               <div style="display:flex;align-items:center;gap:var(--space-2)">
-                <div class="avatar-sm ${u.avatarColor}">${u.name.split(' ').map(n => n[0]).join('')}</div>
-                <span style="font-weight:500;color:var(--color-text);font-size:var(--fs-sm)">${u.name}</span>
+                <div class="avatar-sm ${esc(u.avatarColor)}">${esc(u.name.split(' ').map(n => n[0]).join(''))}</div>
+                <span style="font-weight:500;color:var(--color-text);font-size:var(--fs-sm)">${esc(u.name)}</span>
               </div>
             </td>
-            <td style="color:var(--color-text-secondary);font-size:var(--fs-sm)">${u.email}</td>
-            <td><span class="badge ${u.role === 'Admin' ? 'badge-admin' : 'badge-member'}">${u.role}</span></td>
-            <td style="color:var(--color-text-tertiary);font-size:var(--fs-sm)">${u.location}</td>
+            <td style="color:var(--color-text-secondary);font-size:var(--fs-sm)">${esc(u.email)}</td>
+            <td><span class="badge ${u.role === 'Admin' ? 'badge-admin' : 'badge-member'}">${esc(u.role)}</span></td>
+            <td style="color:var(--color-text-tertiary);font-size:var(--fs-sm)">${esc(u.location)}</td>
             <td style="text-align:right">
               ${u.role === 'Admin'
                 ? `<button class="btn btn-sm btn-outline" onclick="APP.demoteUser('${u.id}')">Demote</button>`
@@ -1591,10 +1670,10 @@ function renderAdminReviews(state) {
         <thead><tr><th>Reviewer</th><th>For</th><th>Rating</th><th>Comment</th><th style="text-align:right">Actions</th></tr></thead>
         <tbody>
           ${reviews.length > 0 ? reviews.map(r => `<tr>
-            <td style="color:var(--color-text-secondary);font-size:var(--fs-sm)">${r.reviewerName}</td>
-            <td style="color:var(--color-text-secondary);font-size:var(--fs-sm)">${r.targetName}</td>
+            <td style="color:var(--color-text-secondary);font-size:var(--fs-sm)">${esc(r.reviewerName)}</td>
+            <td style="color:var(--color-text-secondary);font-size:var(--fs-sm)">${esc(r.targetName)}</td>
             <td>${'★'.repeat(r.rating)}${'☆'.repeat(5 - r.rating)}</td>
-            <td style="color:var(--color-text-tertiary);font-size:var(--fs-sm);max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.comment}</td>
+            <td style="color:var(--color-text-tertiary);font-size:var(--fs-sm);max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.comment)}</td>
             <td style="text-align:right">
               <button class="btn btn-sm" style="background:var(--color-error);color:white" onclick="APP.deleteReview('${r.id}')">Delete</button>
             </td>
@@ -1668,6 +1747,26 @@ function renderShareModal(state) {
             <label class="form-label">Location</label>
             <input type="text" class="input-field" id="share-location" placeholder="e.g. Baraton Market Area" required>
           </div>
+        </div>
+        <div>
+          <label class="form-label">Photo of Item</label>
+          <div id="share-image-preview" style="display:none;margin-bottom:var(--space-3)">
+            <div style="position:relative;display:inline-block;border-radius:var(--radius-md);overflow:hidden;border:1px solid var(--color-border)">
+              <img id="share-image-img" src="" alt="Preview" style="max-width:100%;max-height:180px;display:block;object-fit:cover">
+              <button type="button" onclick="APP.clearShareImage()" style="position:absolute;top:6px;right:6px;width:24px;height:24px;border-radius:50%;background:rgba(0,0,0,0.6);color:white;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;line-height:1">×</button>
+            </div>
+          </div>
+          <div id="share-image-buttons" style="display:flex;gap:var(--space-3);flex-wrap:wrap">
+            <label style="flex:1;min-width:140px;display:flex;align-items:center;justify-content:center;gap:var(--space-2);padding:var(--space-3);border:2px dashed var(--color-border);border-radius:var(--radius-md);cursor:pointer;transition:all 0.2s ease;font-size:var(--fs-sm);color:var(--color-text-secondary);background:var(--neutral-100)" onmouseover="this.style.borderColor='var(--color-primary)';this.style.color='var(--color-primary)'" onmouseout="this.style.borderColor='var(--color-border)';this.style.color='var(--color-text-secondary)'">
+              ${icon('imagePlus', 'w-5 h-5')}<span>Choose from Gallery</span>
+              <input type="file" id="share-image-input" accept="image/*" style="display:none" onchange="APP.previewShareImage(this)">
+            </label>
+            <label style="flex:1;min-width:140px;display:flex;align-items:center;justify-content:center;gap:var(--space-2);padding:var(--space-3);border:2px dashed var(--color-border);border-radius:var(--radius-md);cursor:pointer;transition:all 0.2s ease;font-size:var(--fs-sm);color:var(--color-text-secondary);background:var(--neutral-100)" onmouseover="this.style.borderColor='var(--color-primary)';this.style.color='var(--color-primary)'" onmouseout="this.style.borderColor='var(--color-border)';this.style.color='var(--color-text-secondary)'">
+              ${icon('camera', 'w-5 h-5')}<span>Take a Photo</span>
+              <input type="file" id="share-camera-input" accept="image/*" capture="environment" style="display:none" onchange="APP.previewShareImage(this)">
+            </label>
+          </div>
+          <p style="font-size:11px;color:var(--color-text-tertiary);margin-top:var(--space-2)">Optional. JPG or PNG, max 2MB. Photo will be compressed automatically.</p>
         </div>
         <div class="modal-footer" style="margin:0">
           <button type="button" class="btn btn-secondary" onclick="APP.closeModal()">Cancel</button>
