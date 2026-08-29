@@ -25,7 +25,14 @@ from .email_service import send_welcome_email, send_password_reset_email
 
 
 class AuthRateThrottle(AnonRateThrottle):
-    rate = '10/minute'
+    # Rate is pulled from REST_FRAMEWORK['DEFAULT_THROTTLE_RATES']['auth']
+    # so that test_settings (which clears that dict) effectively disables throttling.
+    scope = 'auth'
+
+    def get_rate(self):
+        from django.conf import settings
+        rates = getattr(settings, 'REST_FRAMEWORK', {}).get('DEFAULT_THROTTLE_RATES', {})
+        return rates.get('auth')  # None if key missing → throttling skipped
 
 
 class CustomTokenObtainPairView(TokenObtainPairView):
