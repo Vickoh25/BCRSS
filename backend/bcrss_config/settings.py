@@ -96,7 +96,7 @@ WSGI_APPLICATION = 'bcrss_config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-# Database configuration - uses SQLite in development, PostgreSQL (Supabase) in production
+# PostgreSQL via Neon (DATABASE_URL is required)
 import dj_database_url
 import logging
 
@@ -156,8 +156,10 @@ if DATABASE_URL:
         db_config = None
 
     if not db_config or not db_config.get('NAME'):
-        logger.warning('DATABASE_URL is set but could not be parsed. Falling back to SQLite.')
-        db_config = None
+        raise ValueError(
+            'DATABASE_URL is set but could not be parsed. '
+            'Set a valid PostgreSQL connection string (e.g. Neon).'
+        )
     else:
         # Ensure Supabase-specific options
         opts = db_config.setdefault('OPTIONS', {})
@@ -166,18 +168,13 @@ if DATABASE_URL:
         opts.setdefault('connect_timeout', 10)
         logger.info('Database connected: engine=%s host=%s name=%s',
                      db_config.get('ENGINE'), db_config.get('HOST'), db_config.get('NAME'))
-
-if db_config:
-    DATABASES = {'default': db_config}
 else:
-    # Fallback to SQLite when DATABASE_URL is unset, empty, or invalid
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
-        }
-    }
-    logger.info('Using SQLite fallback database: %s', DATABASES['default']['NAME'])
+    raise ValueError(
+        'DATABASE_URL environment variable is required. '
+        'Set it to your PostgreSQL connection string (e.g. Neon).'
+    )
+
+DATABASES = {'default': db_config}
 
 
 # Password validation
