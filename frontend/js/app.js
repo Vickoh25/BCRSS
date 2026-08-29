@@ -616,31 +616,225 @@ const APP = {
 
     const reader = new FileReader();
     reader.onload = (ev) => {
-      this.compressImage(ev.target.result, 800, 0.8).then((compressed) => {
-        this._pendingShareImage = compressed;
-        const preview = document.getElementById('share-image-preview');
-        const img = document.getElementById('share-image-img');
-        const buttons = document.getElementById('share-image-buttons');
-        if (preview && img) {
-          img.src = compressed;
-          preview.style.display = 'block';
-        }
-        if (buttons) buttons.style.display = 'none';
-      });
+      this._rawShareImage = ev.target.result;
+      this._showCropUI();
     };
     reader.readAsDataURL(file);
   },
 
-  clearShareImage() {
-    this._pendingShareImage = null;
-    const preview = document.getElementById('share-image-preview');
-    const buttons = document.getElementById('share-image-buttons');
+  // ==================== CROP UI ====================
+  _cropDragging: false,
+  _cropResizing: false,
+  _cropBox: null,
+  _cropImg: null,
+  _cropStartX: 0,
+  _cropStartY: 0,
+  _cropStartBox: null,
+  _cropAspect: 1,
+
+  _showCropUI() {
+    if (!this._rawShareImage) return;
+
+    // Remove existing overlay
+    const existing = document.getElementById('bcrss-crop-overlay');
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'bcrss-crop-overlay';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.85);z-index:10000;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;';
+
+    overlay.innerHTML = `
+      <div style="color:white;font-size:14px;font-weight:600;margin-bottom:8px;text-align:center;">Drag to position • Drag edges to resize</div>
+      <div id="bcrss-crop-container" style="position:relative;overflow:hidden;border-radius:8px;background:#000;max-width:90vw;max-height:65vh;touch-action:none;">
+        <img id="bcrss-crop-img" src="${this._rawShareImage}" style="display:block;width:100%;height:auto;pointer-events:none;user-select:none;-webkit-user-select:none;">
+        <div id="bcrss-crop-box" style="position:absolute;border:2px solid white;cursor:move;background:rgba(255,255,255,0.1);box-shadow:0 0 0 9999px rgba(0,0,0,0.55);"></div>
+      </div>
+      <div style="display:flex;gap:12px;margin-top:12px;">
+        <button id="bcrss-crop-cancel" style="padding:10px 24px;border-radius:8px;border:1px solid rgba(255,255,255,0.3);background:transparent;color:white;font-size:14px;cursor:pointer;">Cancel</button>
+        <button id="bcrss-crop-confirm" style="padding:10px 24px;border-radius:8px;border:none;background:#1F7A5A;color:white;font-size:14px;font-weight:600;cursor:pointer;">Crop & Use</button>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    const img = document.getElementById('bcrss-crop-img');
+    const container = document.getElementById('bcrss-crop-container');
+    const box = document.getElementById('bcrss-crop-box');
+
+    img.onload = () => {
+      this._cropBox = box;
+      this._cropImg = img;
+      this._initCropBox(container, box);
+      this._bindCropEvents(container, box);
+    };
+    if (img.complete) {
+      this._cropBox = box;
+      this._cropImg = img;
+      this._initCropBox(container, box);
+      this._bindCropEvents(container, box);
+    }
+
+    document.getElementById('bcrss-crop-cancel').onclick = () => this._cancelCrop();
+    document.getElementById('bcrss-crop-confirm').onclick = () => this._confirmCrop();
+  },
+
+  _initCropBox(container, box) {
+    const cw = container.offsetWidth;
+    const ch = container.offsetHeight;
+    const size = Math.floor(Math.min(cw, ch) * 0.85);
+    const side = Math.min(size, cw, ch);
+    box.style.width = side + 'px';
+    box.style.height = Math.round(side * this._cropAspect) + 'px';
+    box.style.left = Math.round((cw - side) / 2) + 'px';
+    box.style.top = Math.round((ch - side * this._cropAspect) / 2) + 'px';
+  },
+
+  _bindCropEvents(container, box) {
+    const startDrag = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      this._cropDragging = true;
+      this._cropResizing = false;
+      const pt = e.touches ? e.touches[0] : e;
+      const rect = box.getBoundingClientRect();
+      const cRect = container.getBoundingClientRect();
+      this._cropStartX = pt.clientX - rect.left;
+      this._cropStartY = pt.clientY - rect.top;
+      this._cropStartBox = {
+        left: box.offsetLeft,
+        top: box.offsetTop,
+        width: box.offsetWidth,
+        height: box.offsetHeight,
+      };
+    };
+
+    const startResize = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      this._cropResizing = true;
+      this._cropDragging = false;
+      const pt = e.touches ? e.touches[0] : e;
+      this._cropStartX = pt.clientX;
+      this._cropStartY = pt.clientY;
+      this._cropStartBox = {
+        left: box.offsetLeft,
+        top: box.offsetTop,
+        width: box.offsetWidth,
+        height: box.offsetHeight,
+      };
+    };
+
+    const onMove = (e) => {
+      const pt = e.touches ? e.touches[0] : e;
+      if (this._cropDragging) {
+        const cw = container.offsetWidth;
+        const ch = container.offsetHeight;
+        let newLeft = pt.clientX - container.getBoundingClientRect().left - this._cropStartX;
+        let newTop = pt.clientY - container.getBoundingClientRect().top - this._cropStartY;
+        const bw = this._cropStartBox.width;
+        const bh = this._cropStartBox.height;
+        newLeft = Math.max(0, Math.min(cw - bw, newLeft));
+        newTop = Math.max(0, Math.min(ch - bh, newTop));
+        box.style.left = Math.round(newLeft) + 'px';
+        box.style.top = Math.round(newTop) + 'px';
+        e.preventDefault();
+      }
+      if (this._cropResizing) {
+        const dx = pt.clientX - this._cropStartX;
+        const cw = container.offsetWidth;
+        const ch = container.offsetHeight;
+        let newW = this._cropStartBox.width + dx;
+        newW = Math.max(60, Math.min(cw, newW));
+        let newH = newW * this._cropAspect;
+        if (newH > ch) { newH = ch; newW = newH / this._cropAspect; }
+        newW = Math.max(60, newW);
+        newH = Math.max(60, newH);
+        box.style.width = Math.round(newW) + 'px';
+        box.style.height = Math.round(newH) + 'px';
+        box.style.left = this._cropStartBox.left + 'px';
+        box.style.top = this._cropStartBox.top + 'px';
+        e.preventDefault();
+      }
+    };
+
+    const endDrag = () => { this._cropDragging = false; this._cropResizing = false; };
+
+    box.addEventListener('mousedown', startDrag);
+    box.addEventListener('touchstart', startDrag, { passive: false });
+    box.addEventListener('touchmove', onMove, { passive: false });
+    container.addEventListener('mousedown', startResize);
+    container.addEventListener('touchstart', startResize, { passive: false });
+    container.addEventListener('touchmove', onMove, { passive: false });
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', endDrag);
+    document.addEventListener('touchend', endDrag);
+  },
+
+  _cancelCrop() {
+    const overlay = document.getElementById('bcrss-crop-overlay');
+    if (overlay) overlay.remove();
+    this._rawShareImage = null;
+    this._clearShareImageInputs();
+  },
+
+  _confirmCrop() {
+    const img = document.getElementById('bcrss-crop-img');
+    const box = document.getElementById('bcrss-crop-box');
+    const container = document.getElementById('bcrss-crop-container');
+    if (!img || !box || !container) { this._cancelCrop(); return; }
+
+    const imgRect = img.getBoundingClientRect();
+    const boxRect = box.getBoundingClientRect();
+    const sx = (boxRect.left - imgRect.left) / imgRect.width * img.naturalWidth;
+    const sy = (boxRect.top - imgRect.top) / imgRect.height * img.naturalHeight;
+    const sw = boxRect.width / imgRect.width * img.naturalWidth;
+    const sh = boxRect.height / imgRect.height * img.naturalHeight;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(sw);
+    canvas.height = Math.round(sh);
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+    const croppedData = canvas.toDataURL('image/jpeg', 0.92);
+
+    const overlay = document.getElementById('bcrss-crop-overlay');
+    if (overlay) overlay.remove();
+
+    this.compressImage(croppedData, 800, 0.8).then((compressed) => {
+      this._pendingShareImage = compressed;
+      const preview = document.getElementById('share-image-preview');
+      const previewImg = document.getElementById('share-image-img');
+      const buttons = document.getElementById('share-image-buttons');
+      if (preview && previewImg) {
+        previewImg.src = compressed;
+        preview.style.display = 'block';
+      }
+      if (buttons) buttons.style.display = 'none';
+    });
+  },
+
+  openCropUI() {
+    if (this._pendingShareImage) {
+      this._rawShareImage = this._pendingShareImage;
+      this._showCropUI();
+    }
+  },
+
+  _clearShareImageInputs() {
     const inputGallery = document.getElementById('share-image-input');
     const inputCamera = document.getElementById('share-camera-input');
-    if (preview) preview.style.display = 'none';
-    if (buttons) buttons.style.display = 'flex';
     if (inputGallery) inputGallery.value = '';
     if (inputCamera) inputCamera.value = '';
+  },
+
+  clearShareImage() {
+    this._pendingShareImage = null;
+    this._rawShareImage = null;
+    const preview = document.getElementById('share-image-preview');
+    const buttons = document.getElementById('share-image-buttons');
+    if (preview) preview.style.display = 'none';
+    if (buttons) buttons.style.display = 'flex';
+    this._clearShareImageInputs();
   },
 
   compressImage(dataUrl, maxDim, quality) {

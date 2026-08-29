@@ -1755,6 +1755,9 @@ function renderShareModal(state) {
               <img id="share-image-img" src="" alt="Preview" style="max-width:100%;max-height:180px;display:block;object-fit:cover">
               <button type="button" onclick="APP.clearShareImage()" style="position:absolute;top:6px;right:6px;width:24px;height:24px;border-radius:50%;background:rgba(0,0,0,0.6);color:white;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;line-height:1">×</button>
             </div>
+            <div style="display:flex;gap:var(--space-2);margin-top:var(--space-2)">
+              <button type="button" class="btn btn-secondary" style="font-size:var(--fs-xs);padding:4px 10px" onclick="APP.openCropUI()">Crop</button>
+            </div>
           </div>
           <div id="share-image-buttons" style="display:flex;gap:var(--space-3);flex-wrap:wrap">
             <label style="flex:1;min-width:140px;display:flex;align-items:center;justify-content:center;gap:var(--space-2);padding:var(--space-3);border:2px dashed var(--color-border);border-radius:var(--radius-md);cursor:pointer;transition:all 0.2s ease;font-size:var(--fs-sm);color:var(--color-text-secondary);background:var(--neutral-100)" onmouseover="this.style.borderColor='var(--color-primary)';this.style.color='var(--color-primary)'" onmouseout="this.style.borderColor='var(--color-border)';this.style.color='var(--color-text-secondary)'">
@@ -1763,7 +1766,7 @@ function renderShareModal(state) {
             </label>
             <label style="flex:1;min-width:140px;display:flex;align-items:center;justify-content:center;gap:var(--space-2);padding:var(--space-3);border:2px dashed var(--color-border);border-radius:var(--radius-md);cursor:pointer;transition:all 0.2s ease;font-size:var(--fs-sm);color:var(--color-text-secondary);background:var(--neutral-100)" onmouseover="this.style.borderColor='var(--color-primary)';this.style.color='var(--color-primary)'" onmouseout="this.style.borderColor='var(--color-border)';this.style.color='var(--color-text-secondary)'">
               ${icon('camera', 'w-5 h-5')}<span>Take a Photo</span>
-              <input type="file" id="share-camera-input" accept="image/*" capture="environment" style="display:none" onchange="APP.previewShareImage(this)">
+              <input type="file" id="share-camera-input" accept="image/*" style="display:none" onchange="APP.previewShareImage(this)">
             </label>
           </div>
           <p style="font-size:11px;color:var(--color-text-tertiary);margin-top:var(--space-2)">Optional. JPG or PNG, max 2MB. Photo will be compressed automatically.</p>
