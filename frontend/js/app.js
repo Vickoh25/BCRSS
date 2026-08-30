@@ -1228,6 +1228,7 @@ const APP = {
 
   // ==================== USER MANAGEMENT ====================
   async promoteUser(userId) {
+    userId = Number(userId);
     const user = this.state.users.find(u => u.id === userId);
     if (user && confirm(`Promote ${user.name} to Admin role?`)) {
       try {
@@ -1242,6 +1243,7 @@ const APP = {
   },
 
   async demoteUser(userId) {
+    userId = Number(userId);
     const user = this.state.users.find(u => u.id === userId);
     if (user && confirm(`Demote ${user.name} to Member role?`)) {
       try {
@@ -1256,6 +1258,7 @@ const APP = {
   },
 
   async deleteUserContent(userId) {
+    userId = Number(userId);
     const user = this.state.users.find(u => u.id === userId);
     if (!user || confirm(`Remove ALL content by ${user.name}? This will delete their resources, jobs, and reviews.`)) {
       const userResources = this.state.resources.filter(r => r.ownerId === userId);
