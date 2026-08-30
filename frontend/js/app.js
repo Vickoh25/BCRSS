@@ -499,6 +499,9 @@ const APP = {
     this.state.applyJobTarget = null;
     this.state.reviewTarget = null;
     this._pendingShareImage = null;
+    // Close any open image lightbox
+    const lightbox = document.getElementById('bcrss-lightbox');
+    if (lightbox) lightbox.remove();
     this.render();
   },
 
@@ -870,6 +873,45 @@ const APP = {
     return localStorage.getItem(`bcrss_img_${resourceId}`) || null;
   },
 
+  // ==================== IMAGE LIGHTBOX ====================
+  openImageLightbox(imageUrl, title) {
+    if (!imageUrl) return;
+    // Remove existing lightbox
+    const existing = document.getElementById('bcrss-lightbox');
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'bcrss-lightbox';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.9);z-index:10000;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;animation:fadeIn 0.2s ease;';
+
+    overlay.innerHTML = `
+      <div style="position:absolute;top:16px;left:16px;right:16px;display:flex;justify-content:space-between;align-items:center;z-index:1">
+        <span style="color:white;font-size:14px;font-weight:600;text-shadow:0 1px 3px rgba(0,0,0,0.5)">${title ? esc(title) : 'Resource Photo'}</span>
+        <button id="bcrss-lightbox-close" style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.15);border:none;color:white;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:20px;backdrop-filter:blur(4px);transition:background 0.2s" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.15)'">&times;</button>
+      </div>
+      <img src="${imageUrl}" alt="${title ? esc(title) : 'Resource photo'}" style="max-width:90vw;max-height:85vh;object-fit:contain;border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,0.4);cursor:zoom-out">
+    `;
+
+    document.body.appendChild(overlay);
+    document.body.style.overflow = 'hidden';
+
+    const closeLightbox = () => {
+      overlay.remove();
+      document.body.style.overflow = '';
+    };
+
+    overlay.onclick = (e) => {
+      if (e.target === overlay || e.target.tagName === 'IMG') closeLightbox();
+    };
+    document.getElementById('bcrss-lightbox-close').onclick = closeLightbox;
+    document.onkeydown = (e) => {
+      if (e.key === 'Escape') {
+        closeLightbox();
+        document.onkeydown = null;
+      }
+    };
+  },
+
   // ==================== SHARE RESOURCE HANDLER ====================
   async handleShareResource(e) {
     e.preventDefault();
@@ -899,11 +941,21 @@ const APP = {
     data.image_code = imageCode;
 
     try {
-      await apiClient.createResource(data);
+      const created = await apiClient.createResource(data);
 
-      // Save uploaded image locally if one was selected
+      // Upload image to Cloudinary via the backend if one was selected
       if (this._pendingShareImage) {
-        this.saveResourceImage(resourceId, this._pendingShareImage);
+        try {
+          // Convert base64 data URL to a Blob file for upload
+          const response = await fetch(this._pendingShareImage);
+          const blob = await response.blob();
+          const file = new File([blob], 'resource-image.jpg', { type: 'image/jpeg' });
+          // Use the ID from the API response if available, otherwise use the generated one
+          const actualId = created.id || resourceId;
+          await apiClient.uploadResourceImage(actualId, file);
+        } catch (imgErr) {
+          console.warn('Image upload failed, resource was still created:', imgErr);
+        }
         this._pendingShareImage = null;
       }
 

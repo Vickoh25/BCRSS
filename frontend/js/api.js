@@ -63,6 +63,7 @@ class APIClient {
       ownerContact: r.owner ? r.owner.contact : '',
       listedDate: r.listed_date || r.created_at,
       imageCode: r.image_code || 'generic',
+      imageUrl: r.image_url || null,
       lendingType: r.lending_type
     };
   }
@@ -253,6 +254,25 @@ class APIClient {
     return this.mapResource(r);
   }
   createResource(data) { return this.request('/resources/', { method: 'POST', body: data }); }
+  async uploadResourceImage(resourceId, imageFile) {
+    const formData = new FormData();
+    formData.append('image', imageFile);
+    const url = `${this.baseURL}/resources/${resourceId}/upload_image_for_resource/`;
+    const headers = {};
+    if (this.token) {
+      headers['Authorization'] = `Bearer ${this.token}`;
+    }
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+    if (!response.ok) {
+      const errBody = await response.json().catch(() => ({ detail: 'Upload failed' }));
+      throw new Error(errBody.detail || 'Image upload failed');
+    }
+    return response.json();
+  }
   updateResource(id, data) { return this.request(`/resources/${id}/`, { method: 'PUT', body: data }); }
   deleteResource(id) { return this.request(`/resources/${id}/`, { method: 'DELETE' }); }
   async getMyResources() { 

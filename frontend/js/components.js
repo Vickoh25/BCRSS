@@ -974,11 +974,11 @@ function renderResourcesPage(state) {
 function renderResourceCard(item, currentUser) {
   const isOwner = currentUser && item.ownerId === currentUser.id;
   const catClass = item.category === 'farm tools' ? 'cat-tag-farm' : item.category === 'textbooks' ? 'cat-tag-textbook' : 'cat-tag-household';
-  const photoUrl = (typeof APP !== 'undefined' && APP.getResourceImage) ? APP.getResourceImage(item.id) : null;
+  const photoUrl = item.imageUrl || ((typeof APP !== 'undefined' && APP.getResourceImage) ? APP.getResourceImage(item.id) : null);
 
   return `<div class="resource-card group" onclick="event.stopPropagation()">
     <div class="resource-card-image">
-      ${renderItemImage(item.imageCode, item.category, 'h-44 w-full', photoUrl)}
+      <div onclick="${photoUrl ? `APP.openImageLightbox('${photoUrl}', '${esc(item.title)}')` : ''}" style="${photoUrl ? 'cursor:zoom-in;' : ''}position:relative;width:100%;height:100%">${renderItemImage(item.imageCode, item.category, 'h-44 w-full', photoUrl)}${photoUrl ? '<div style="position:absolute;top:var(--space-3);right:var(--space-3);z-index:10;width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,0.85);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,0.15)">' + icon('externalLink', 'w-3.5 h-3.5') + '</div>' : ''}</div>
       <span style="position:absolute;top:var(--space-3);left:var(--space-3);z-index:10" class="badge ${item.status === 'Available' ? 'badge-available' : 'badge-borrowed'}">${esc(item.status)}</span>
       <span style="position:absolute;bottom:var(--space-3);right:var(--space-3);background:rgba(255,255,255,0.9);backdrop-filter:blur(4px);padding:2px 10px;border-radius:var(--radius-sm);border:1px solid var(--color-border);font-size:11px;font-weight:600;color:var(--color-text-secondary)">${esc(item.condition)}</span>
     </div>
