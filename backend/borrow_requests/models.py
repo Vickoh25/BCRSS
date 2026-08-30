@@ -21,6 +21,7 @@ class BorrowRequest(models.Model):
     reminder_sent = models.BooleanField(default=False)
     is_disputed = models.BooleanField(default=False)
     dispute_message = models.TextField(blank=True, null=True)
+    dispute_resolution_note = models.TextField(blank=True, null=True)
     request_date = models.DateField(auto_now_add=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

@@ -321,8 +321,9 @@ class BorrowRequestViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
+        resolution_note = request.data.get('resolution_note', '').strip()
         borrow_request.is_disputed = False
-        borrow_request.dispute_message = None
+        borrow_request.dispute_resolution_note = resolution_note or None
         borrow_request.status = new_status
         borrow_request.save()
         

@@ -1500,29 +1500,53 @@ function renderAdminRequests(state) {
     'Declined': 'badge-declined', 'Returned': 'badge-returned'
   };
 
+  const resolvingId = state.resolvingRequestId;
+
   return `
   <div class="table-container">
     <div style="overflow-x:auto">
       <table class="data-table">
         <thead><tr><th>Item</th><th>Requester</th><th>Owner</th><th>Status</th><th>Issues</th><th style="text-align:right">Actions</th></tr></thead>
         <tbody>
-          ${requests.length > 0 ? requests.map(req => `<tr>
+          ${requests.length > 0 ? requests.map(req => `${
+            req.is_disputed && resolvingId === req.id ? `
+            <tr style="background:var(--color-bg-light, #f9fafb)">
+              <td colspan="6" style="padding:var(--space-4)">
+                <div style="display:flex;flex-direction:column;gap:var(--space-3);max-width:500px">
+                  <div style="display:flex;align-items:center;gap:var(--space-2)">
+                    <span class="badge" style="background:var(--color-error-bg);color:var(--color-error)">Disputed</span>
+                    <span style="font-weight:600;color:var(--color-text);font-size:var(--fs-sm)">Resolving: ${esc(req.itemTitle)}</span>
+                  </div>
+                  ${req.dispute_message ? `<p style="font-size:var(--fs-xs);color:var(--color-text-secondary);margin:0"><strong>Dispute reason:</strong> ${esc(req.dispute_message)}</p>` : ''}
+                  <div>
+                    <label for="resolve-note-${req.id}" style="font-size:var(--fs-xs);font-weight:600;color:var(--color-text-secondary);display:block;margin-bottom:4px">Resolution Note (optional)</label>
+                    <textarea id="resolve-note-${req.id}" rows="3" placeholder="Explain how this dispute was resolved..." oninput="APP.setResolutionNote(this.value)" style="width:100%;padding:var(--space-2);border:1px solid var(--color-border-light);border-radius:var(--radius-sm);font-size:var(--fs-sm);font-family:inherit;resize:vertical;box-sizing:border-box">${esc(state.resolutionNote || '')}</textarea>
+                  </div>
+                  <div style="display:flex;gap:var(--space-2)">
+                    <button class="btn btn-sm" style="background:var(--color-primary);color:white" onclick="APP.resolveDispute('${req.id}', 'Returned')">Confirm Resolution</button>
+                    <button class="btn btn-sm btn-outline" onclick="APP.cancelResolveDispute()">Cancel</button>
+                  </div>
+                </div>
+              </td>
+            </tr>` : `
+          <tr>
             <td><span style="font-weight:500;color:var(--color-text);font-size:var(--fs-sm)">${esc(req.itemTitle)}</span></td>
             <td style="color:var(--color-text-secondary);font-size:var(--fs-sm)">${esc(req.requesterName)}</td>
             <td style="color:var(--color-text-secondary);font-size:var(--fs-sm)">${esc(req.ownerId)}</td>
             <td><span class="badge ${statusColors[req.status] || 'badge-pending'}">${esc(req.status)}</span></td>
             <td>
-              ${req.is_disputed ? `<span class="badge" style="background:var(--color-error-bg);color:var(--color-error)">Disputed</span>` : `<span style="color:var(--color-text-tertiary)">None</span>`}
+              ${req.is_disputed ? `<span class="badge" style="background:var(--color-error-bg);color:var(--color-error)">Disputed</span>` : req.dispute_resolution_note ? `<span style="font-size:var(--fs-xs);color:var(--color-text-tertiary);display:block;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(req.dispute_resolution_note)}">Resolved: ${esc(req.dispute_resolution_note)}</span>` : `<span style="color:var(--color-text-tertiary)">None</span>`}
             </td>
             <td style="text-align:right">
               <div style="display:flex;justify-content:flex-end;gap:var(--space-2)">
                 ${req.is_disputed ? `
-                  <button class="btn btn-sm" style="background:var(--color-primary);color:white" onclick="APP.resolveDispute('${req.id}', 'Returned')">Resolve</button>
+                  <button class="btn btn-sm" style="background:var(--color-primary);color:white" onclick="APP.startResolveDispute('${req.id}')">Resolve</button>
                 ` : ''}
                 <button class="btn btn-sm btn-outline" onclick="APP.deleteRequest('${req.id}')">Delete</button>
               </div>
             </td>
-          </tr>`).join('') : `<tr><td colspan="6" style="text-align:center;color:var(--color-text-tertiary);padding:var(--space-8)">No requests found.</td></tr>`}
+          </tr>`
+          }`).join('') : `<tr><td colspan="6" style="text-align:center;color:var(--color-text-tertiary);padding:var(--space-8)">No requests found.</td></tr>`}
         </tbody>
       </table>
     </div>
@@ -1636,9 +1660,9 @@ function renderAdminUsers(state) {
   <div class="table-container">
     <div style="overflow-x:auto">
       <table class="data-table">
-        <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Location</th><th style="text-align:right">Actions</th></tr></thead>
+        <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Location</th><th style="text-align:right">Actions</th></tr></thead>
         <tbody>
-          ${filtered.map(u => `<tr>
+          ${filtered.map(u => `<tr style="${u.isActive === false ? 'opacity:0.5' : ''}">
             <td>
               <div style="display:flex;align-items:center;gap:var(--space-2)">
                 <div class="avatar-sm ${esc(u.avatarColor)}">${esc(u.name.split(' ').map(n => n[0]).join(''))}</div>
@@ -1647,12 +1671,18 @@ function renderAdminUsers(state) {
             </td>
             <td style="color:var(--color-text-secondary);font-size:var(--fs-sm)">${esc(u.email)}</td>
             <td><span class="badge ${u.role === 'Admin' ? 'badge-admin' : 'badge-member'}">${esc(u.role)}</span></td>
+            <td><span class="badge ${u.isActive === false ? 'badge-borrowed' : 'badge-available'}">${u.isActive === false ? 'Suspended' : 'Active'}</span></td>
             <td style="color:var(--color-text-tertiary);font-size:var(--fs-sm)">${esc(u.location)}</td>
             <td style="text-align:right">
-              ${u.role === 'Admin'
-                ? `<button class="btn btn-sm btn-outline" onclick="APP.demoteUser('${u.id}')">Demote</button>`
-                : `<button class="btn btn-sm" style="background:var(--color-primary);color:white" onclick="APP.promoteUser('${u.id}')">Promote</button>`
-              }
+              <div style="display:flex;justify-content:flex-end;gap:var(--space-2);flex-wrap:wrap">
+                <button class="btn btn-sm btn-outline" onclick="APP.viewUserProfile('${u.id}')">View</button>
+                ${u.role === 'Admin'
+                  ? `<button class="btn btn-sm btn-outline" onclick="APP.demoteUser('${u.id}')">Demote</button>`
+                  : `<button class="btn btn-sm" style="background:var(--color-primary);color:white" onclick="APP.promoteUser('${u.id}')">Promote</button>`
+                }
+                <button class="btn btn-sm btn-outline" onclick="APP.suspendUser('${u.id}')" style="color:${u.isActive === false ? 'var(--color-success)' : 'var(--color-warning)'}">${u.isActive === false ? 'Reactivate' : 'Suspend'}</button>
+                <button class="btn btn-sm" style="background:var(--color-error);color:white" onclick="APP.deleteUser('${u.id}')">Delete</button>
+              </div>
             </td>
           </tr>`).join('')}
         </tbody>

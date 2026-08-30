@@ -181,10 +181,13 @@ def send_dispute_raised_notification(borrow_request, raised_by):
 def send_dispute_resolved_notification(borrow_request):
     """Notify both parties that a dispute has been resolved."""
     item = borrow_request.item
+    resolution_note = getattr(borrow_request, 'dispute_resolution_note', None)
     subject = f"Dispute Resolved for \"{item.title}\""
+    note_section = f"\nResolution Note: {resolution_note}\n" if resolution_note else ""
     message = (
         f"The dispute regarding \"{item.title}\" has been resolved by an admin.\n\n"
-        f"New status: {borrow_request.status}\n\n"
+        f"New status: {borrow_request.status}\n"
+        f"{note_section}\n"
         f"Log in for details:\n"
         f"{settings.FRONTEND_URL or 'https://bcrss.vercel.app'}\n\n"
         f"— BCRSS Community Platform"

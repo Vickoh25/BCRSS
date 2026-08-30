@@ -22,6 +22,9 @@ const APP = {
     adminTab: 'resources',
     adminSearch: '',
 
+    // UI - Modals
+    userProfileData: null,
+
     // UI - Filters
     resourceSearch: '',
     resourceCategory: 'All',
@@ -36,6 +39,8 @@ const APP = {
     borrowItemTarget: null,
     applyJobTarget: null,
     reviewTarget: null,
+    resolvingRequestId: null,
+    resolutionNote: '',
 
     // UI - Password Reset
     resetPasswordUid: null,
@@ -297,6 +302,8 @@ const APP = {
       container.innerHTML = renderRegisterModal(s);
     } else if (s.activeModal === 'resetPassword') {
       container.innerHTML = renderResetPasswordModal(s);
+    } else if (s.activeModal === 'userProfile') {
+      container.innerHTML = renderUserProfileModal(s);
     } else {
       container.innerHTML = '';
     }
@@ -1142,12 +1149,36 @@ const APP = {
 
   async resolveDispute(requestId, status) {
     try {
-      await apiClient.resolveDispute(requestId, status);
+      const resolutionNote = this.state.resolutionNote || '';
+      await apiClient.resolveDispute(requestId, status, resolutionNote);
+      this.state.resolvingRequestId = null;
+      this.state.resolutionNote = '';
       alert('Dispute resolved.');
       this.init();
     } catch (err) {
       alert('Failed to resolve dispute.');
     }
+  },
+
+  startResolveDispute(requestId) {
+    this.state.resolvingRequestId = requestId;
+    this.state.resolutionNote = '';
+    this.render();
+    // Focus the textarea after render
+    setTimeout(() => {
+      const ta = document.getElementById(`resolve-note-${requestId}`);
+      if (ta) ta.focus();
+    }, 50);
+  },
+
+  cancelResolveDispute() {
+    this.state.resolvingRequestId = null;
+    this.state.resolutionNote = '';
+    this.render();
+  },
+
+  setResolutionNote(value) {
+    this.state.resolutionNote = value;
   },
 
   async loadAnalytics() {
@@ -1286,6 +1317,56 @@ const APP = {
 
       this.render();
       alert(`Removed ${count} items belonging to ${user.name}. Reviews cleaned locally.`);
+    }
+  },
+
+  async viewUserProfile(userId) {
+    userId = Number(userId);
+    this.state.activeModal = 'userProfile';
+    this.state.userProfileData = null;
+    this.render();
+    try {
+      const data = await apiClient.getAdminUserDetail(userId);
+      this.state.userProfileData = data;
+      this.render();
+    } catch (err) {
+      alert('Failed to load user profile: ' + err.message);
+      this.closeModal();
+    }
+  },
+
+  closeUserProfileModal() {
+    this.closeModal();
+  },
+
+  async suspendUser(userId) {
+    userId = Number(userId);
+    const user = this.state.users.find(u => u.id === userId);
+    if (!user) return;
+    const action = user.isActive === false ? 'reactivate' : 'suspend';
+    if (!confirm(`${action === 'suspend' ? 'Suspend' : 'Reactivate'} ${user.name}?`)) return;
+    try {
+      const updated = await apiClient.suspendUser(userId);
+      user.isActive = updated.is_active;
+      alert(`${user.name} has been ${action === 'suspend' ? 'suspended' : 'reactivated'}.`);
+      this.render();
+    } catch (err) {
+      alert('Failed to ' + action + ' user: ' + err.message);
+    }
+  },
+
+  async deleteUser(userId) {
+    userId = Number(userId);
+    const user = this.state.users.find(u => u.id === userId);
+    if (!user) return;
+    if (!confirm(`Permanently delete ${user.name}? This cannot be undone.`)) return;
+    try {
+      await apiClient.deleteUser(userId);
+      this.state.users = this.state.users.filter(u => u.id !== userId);
+      alert(`${user.name} has been deleted.`);
+      this.render();
+    } catch (err) {
+      alert('Failed to delete user: ' + err.message);
     }
   },
 

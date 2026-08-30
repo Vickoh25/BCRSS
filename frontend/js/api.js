@@ -37,7 +37,9 @@ class APIClient {
       contact: u.contact || '',
       avatarColor: u.avatar_color || '#3f51b5',
       bio: u.bio || '',
-      username: u.username
+      username: u.username,
+      isActive: u.is_active !== false,
+      createdAt: u.created_at
     };
   }
 
@@ -242,6 +244,20 @@ class APIClient {
   }
   promoteToAdmin(userId) { return this.request(`/users/${userId}/promote_to_admin/`, { method: 'POST' }); }
   demoteToMember(userId) { return this.request(`/users/${userId}/demote_to_member/`, { method: 'POST' }); }
+  suspendUser(userId) { return this.request(`/users/${userId}/suspend_user/`, { method: 'POST' }); }
+  deleteUser(userId) { return this.request(`/users/${userId}/`, { method: 'DELETE' }); }
+  async getAdminUserDetail(userId) {
+    const data = await this.request(`/users/${userId}/admin_user_detail/`);
+    return {
+      user: this.mapUser(data.user),
+      resources: (data.resources || []).map(r => this.mapResource(r)),
+      jobs: (data.jobs || []).map(j => this.mapJob(j)),
+      borrowRequestsMade: (data.borrow_requests_made || []).map(r => this.mapRequest(r)),
+      borrowRequestsReceived: (data.borrow_requests_received || []).map(r => this.mapRequest(r)),
+      reviewsGiven: (data.reviews_given || []).map(r => this.mapReview(r)),
+      reviewsReceived: (data.reviews_received || []).map(r => this.mapReview(r)),
+    };
+  }
 
   // ========== RESOURCES ==========
   async listResources(filters) {
@@ -338,7 +354,7 @@ class APIClient {
   markBorrowRequestReturned(id) { return this.request(`/borrow-requests/${id}/mark_returned/`, { method: 'POST' }); }
   sendBorrowRequestReminder(id) { return this.request(`/borrow-requests/${id}/send_reminder/`, { method: 'POST' }); }
   raiseDispute(id, message) { return this.request(`/borrow-requests/${id}/raise_dispute/`, { method: 'POST', body: { message } }); }
-  resolveDispute(id, status) { return this.request(`/borrow-requests/${id}/resolve_dispute/`, { method: 'POST', body: { status } }); }
+  resolveDispute(id, status, resolutionNote) { return this.request(`/borrow-requests/${id}/resolve_dispute/`, { method: 'POST', body: { status, resolution_note: resolutionNote } }); }
   getAnalytics() { return this.request('/users/get_analytics/'); }
 
   async downloadReport() {

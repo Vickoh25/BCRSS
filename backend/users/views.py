@@ -87,6 +87,52 @@ class UserViewSet(viewsets.ModelViewSet):
         serializer = UserSerializer(user)
         return Response(serializer.data)
 
+    @action(detail=True, methods=['post'])
+    def suspend_user(self, request, pk=None):
+        """Suspend or reactivate a user by toggling is_active"""
+        if not self._is_role_admin(request.user):
+            return Response({'detail': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+        user = self.get_object()
+        if user.id == request.user.id:
+            return Response({'detail': 'You cannot suspend yourself.'}, status=status.HTTP_400_BAD_REQUEST)
+        user.is_active = not user.is_active
+        user.save()
+        serializer = UserSerializer(user)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['get'])
+    def admin_user_detail(self, request, pk=None):
+        """Get detailed user info including their content for admin review"""
+        if not self._is_role_admin(request.user):
+            return Response({'detail': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+        user = self.get_object()
+
+        from resources.models import Resource
+        from jobs.models import JobOpportunity
+        from borrow_requests.models import BorrowRequest
+        from reviews.models import Review
+        from resources.serializers import ResourceSerializer
+        from jobs.serializers import JobOpportunitySerializer
+        from borrow_requests.serializers import BorrowRequestSerializer
+        from reviews.serializers import ReviewSerializer
+
+        resources = Resource.objects.filter(owner=user).order_by('-created_at')
+        jobs = JobOpportunity.objects.filter(posted_by=user).order_by('-created_at')
+        borrow_requests_made = BorrowRequest.objects.filter(requester=user).order_by('-created_at')
+        borrow_requests_received = BorrowRequest.objects.filter(owner=user).order_by('-created_at')
+        reviews_given = Review.objects.filter(reviewer=user).order_by('-created_at')
+        reviews_received = Review.objects.filter(target_user=user).order_by('-created_at')
+
+        return Response({
+            'user': UserSerializer(user).data,
+            'resources': ResourceSerializer(resources, many=True).data,
+            'jobs': JobOpportunitySerializer(jobs, many=True).data,
+            'borrow_requests_made': BorrowRequestSerializer(borrow_requests_made, many=True).data,
+            'borrow_requests_received': BorrowRequestSerializer(borrow_requests_received, many=True).data,
+            'reviews_given': ReviewSerializer(reviews_given, many=True).data,
+            'reviews_received': ReviewSerializer(reviews_received, many=True).data,
+        })
+
     @action(detail=False, methods=['get'])
     def get_analytics(self, request):
         """Admin endpoint for resource utilization reports"""
