@@ -1,4 +1,4 @@
-package com.example.bcrss_mobile
+package com.bcrss.app
 
 import io.flutter.embedding.android.FlutterActivity
 

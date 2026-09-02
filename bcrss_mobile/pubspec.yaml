@@ -36,6 +36,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   google_fonts: ^6.2.1 # For Playfair Display and Inter
   webview_flutter: 4.11.0
+  http: ^1.2.0
 
 # To fetch these dependencies, run `flutter pub get` in the terminal.
 
