@@ -1770,7 +1770,7 @@ function renderShareModal(state) {
             <label class="form-label">Lending Type</label>
             <select class="select-field" id="share-lending-type">
               <option value="Borrowing">Borrowing</option>
-              <option value="Donating">Donating</option>
+              <option value="Donation">Donation</option>
             </select>
           </div>
           <div>
