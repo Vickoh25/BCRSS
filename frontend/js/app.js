@@ -3,6 +3,37 @@
  * State management, routing, event handlers, and initialisation
  */
 
+/* ==================== TOAST NOTIFICATIONS ==================== */
+function showToast(message, type = 'info', duration = 3500) {
+  const container = document.getElementById('toast-container');
+  if (!container) return;
+
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type}`;
+
+  const icons = {
+    success: '<svg class="toast-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+    error: '<svg class="toast-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',
+    info: '<svg class="toast-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>'
+  };
+
+  toast.innerHTML = `
+    ${icons[type] || icons.info}
+    <span class="toast-message">${message}</span>
+    <button class="toast-close" onclick="this.parentElement.remove()" aria-label="Dismiss">&times;</button>
+  `;
+
+  container.appendChild(toast);
+
+  // Auto-dismiss
+  setTimeout(() => {
+    if (toast.parentElement) {
+      toast.classList.add('toast-exit');
+      toast.addEventListener('animationend', () => toast.remove());
+    }
+  }, duration);
+}
+
 const APP = {
   // ==================== STATE ====================
   state: {
@@ -376,19 +407,10 @@ const APP = {
       const res = await apiClient.login(username, password);
       this.state.currentUser = apiClient.mapUser(res.user);
       this.state.activeModal = null;
-      alert(`Welcome back, ${this.state.currentUser.name}!`);
+      showToast(`Welcome back, ${this.state.currentUser.name}!`, 'success');
       this.init(); // Re-init to load data
     } catch (err) {
-      const msg = err.message || '';
-      if (msg.includes('Network error') || msg.includes('Failed to fetch')) {
-        alert('Unable to reach the server. The backend may be starting up — please wait a moment and try again.');
-      } else if (msg.includes('API Error 400')) {
-        alert('Invalid username or password. Please try again.');
-      } else if (msg.includes('API Error 404')) {
-        alert('Login service unavailable. The server may be restarting — please try again in a moment.');
-      } else {
-        alert('Login failed. Please check your credentials and try again.');
-      }
+      showToast('Login failed. Please check your credentials and try again.', 'error');
     }
   },
 
@@ -406,12 +428,12 @@ const APP = {
     };
 
     if (data.password !== data.password_confirm) {
-      alert('Passwords do not match!');
+      showToast('Passwords do not match!', 'error');
       return;
     }
 
     if (data.password.length < 8) {
-      alert('Password must be at least 8 characters.');
+      showToast('Password must be at least 8 characters.', 'error');
       return;
     }
 
@@ -419,24 +441,10 @@ const APP = {
       const res = await apiClient.register(data);
       this.state.currentUser = apiClient.mapUser(res.user);
       this.state.activeModal = null;
-      alert(`Account created! Welcome, ${this.state.currentUser.name}.`);
+      showToast(`Account created! Welcome, ${this.state.currentUser.name}.`, 'success');
       this.init();
     } catch (err) {
-      const msg = err.message || '';
-      // Extract backend validation details from the error message
-      let detail = msg;
-      const apiMatch = msg.match(/API Error \d+: (.+)/);
-      if (apiMatch) detail = apiMatch[1];
-
-      if (msg.includes('Network error') || msg.includes('Failed to fetch')) {
-        alert('Unable to reach the server. The backend may be starting up — please wait a moment and try again.');
-      } else if (msg.includes('API Error 400')) {
-        alert(`Registration failed: ${detail}`);
-      } else if (msg.includes('API Error 404')) {
-        alert('Registration service unavailable. The server may be restarting — please try again in a moment.');
-      } else {
-        alert(`Registration failed: ${detail}`);
-      }
+      showToast('Registration failed. Please try again.', 'error');
     }
   },
 
@@ -444,7 +452,7 @@ const APP = {
     try {
       await apiClient.downloadReport();
     } catch (err) {
-      alert(err.message || 'Failed to download report. Please try again later.');
+      showToast(err.message || 'Failed to download report. Please try again later.', 'error');
     }
   },
 
@@ -558,9 +566,9 @@ const APP = {
         method: 'POST',
         body: { email }
       });
-      alert('If an account exists with that email, a reset link has been sent. Check your inbox.');
+      showToast('If an account exists with that email, a reset link has been sent. Check your inbox.', 'success');
     } catch (err) {
-      alert('Failed to send reset email. Please try again.');
+      showToast('Failed to send reset email. Please try again.', 'error');
     }
   },
 
@@ -614,13 +622,13 @@ const APP = {
 
     // Validate file type
     if (!file.type.startsWith('image/')) {
-      alert('Please select an image file.');
+      showToast('Please select an image file.', 'error');
       return;
     }
 
     // Validate file size (max 10MB raw, will compress)
     if (file.size > 10 * 1024 * 1024) {
-      alert('Image is too large. Please choose a smaller image (under 10MB).');
+      showToast('Image is too large. Please choose a smaller image (under 10MB).', 'error');
       return;
     }
 
@@ -967,10 +975,10 @@ const APP = {
       }
 
       this.state.activeModal = null;
-      alert(`Fantastic! "${data.title}" has been successfully shared on the listing page!`);
+      showToast(`"${data.title}" has been successfully shared on the listing page!`, 'success');
       this.init();
     } catch (err) {
-      alert('Failed to share resource. Please try again.');
+      showToast('Failed to share resource. Please try again.', 'error');
     }
   },
 
@@ -1000,11 +1008,10 @@ const APP = {
     try {
       await apiClient.createJob(data);
       this.state.activeModal = null;
-      const reqSummary = requirements.length > 0 ? `\nRequirements: ${requirements.join(', ')}` : '\n(No special requirements)';
-      alert(`Success! Your job post "${data.title}" is now visible on the board.${reqSummary}`);
+      showToast(`Your job post "${data.title}" is now visible on the board.`, 'success');
       this.init();
     } catch (err) {
-      alert('Failed to post job. Please check all fields.');
+      showToast('Failed to post job. Please check all fields.', 'error');
     }
   },
 
@@ -1024,7 +1031,7 @@ const APP = {
     };
 
     if (new Date(data.start_date) > new Date(data.end_date)) {
-      alert('Start Date cannot be after the Return Date.');
+      showToast('Start Date cannot be after the Return Date.', 'error');
       return;
     }
 
@@ -1032,10 +1039,10 @@ const APP = {
       await apiClient.createBorrowRequest(data);
       this.state.activeModal = null;
       this.state.borrowItemTarget = null;
-      alert(`Borrow request sent to ${item.ownerName}! Track its status in your Dashboard.`);
+      showToast(`Borrow request sent to ${item.ownerName}! Track its status in your Dashboard.`, 'success');
       this.init();
     } catch (err) {
-      alert('Failed to send borrow request.');
+      showToast('Failed to send borrow request.', 'error');
     }
   },
 
@@ -1048,7 +1055,7 @@ const APP = {
 
     const pitch = document.getElementById('apply-pitch').value.trim();
     if (!pitch) {
-      alert('Please write a brief pitch about your skills.');
+      showToast('Please write a brief pitch about your skills.', 'error');
       return;
     }
 
@@ -1056,10 +1063,10 @@ const APP = {
       await apiClient.applyForJob(job.id, { id: `app-${Date.now()}`, pitch });
       this.state.activeModal = null;
       this.state.applyJobTarget = null;
-      alert(`Application submitted to ${job.postedBy}. They can now see it in their Dashboard.`);
+      showToast(`Application submitted to ${job.postedBy}. They can now see it in their Dashboard.`, 'success');
       this.init();
     } catch (err) {
-      alert(err.message || 'Failed to submit application.');
+      showToast('Failed to submit application.', 'error');
     }
   },
 
@@ -1079,7 +1086,7 @@ const APP = {
     };
 
     if (!data.comment) {
-      alert('Please write a short review.');
+      showToast('Please write a short review.', 'error');
       return;
     }
 
@@ -1087,10 +1094,10 @@ const APP = {
       await apiClient.createReview(data);
       this.state.activeModal = null;
       this.state.reviewTarget = null;
-      alert(`Review submitted for ${target.userName}.`);
+      showToast(`Review submitted for ${target.userName}.`, 'success');
       this.init();
     } catch (err) {
-      alert(err.message || 'Failed to submit review.');
+      showToast('Failed to submit review.', 'error');
     }
   },
 
@@ -1098,40 +1105,40 @@ const APP = {
   async approveRequest(requestId) {
     try {
       await apiClient.approveBorrowRequest(requestId);
-      alert(`You successfully Approved this borrow request!`);
+      showToast('You successfully approved this borrow request!', 'success');
       this.init();
     } catch (err) {
-      alert('Failed to approve request.');
+      showToast('Failed to approve request.', 'error');
     }
   },
 
   async declineRequest(requestId) {
     try {
       await apiClient.declineBorrowRequest(requestId);
-      alert('Declined request.');
+      showToast('Request declined.', 'info');
       this.init();
     } catch (err) {
-      alert('Failed to decline request.');
+      showToast('Failed to decline request.', 'error');
     }
   },
 
   async markReturned(requestId) {
     try {
       await apiClient.markBorrowRequestReturned(requestId);
-      alert('Marked as returned!');
+      showToast('Marked as returned!', 'success');
       this.init();
     } catch (err) {
-      alert('Failed to mark as returned.');
+      showToast('Failed to mark as returned.', 'error');
     }
   },
   
   async sendReminder(requestId) {
     try {
       await apiClient.sendBorrowRequestReminder(requestId);
-      alert('Reminder sent to borrower!');
+      showToast('Reminder sent to borrower!', 'success');
       this.init();
     } catch (err) {
-      alert('Failed to send reminder.');
+      showToast('Failed to send reminder.', 'error');
     }
   },
 
@@ -1140,10 +1147,10 @@ const APP = {
     if (!message) return;
     try {
       await apiClient.raiseDispute(requestId, message);
-      alert('Dispute raised. A community manager will review it.');
+      showToast('Dispute raised. A community manager will review it.', 'info');
       this.init();
     } catch (err) {
-      alert('Failed to raise dispute.');
+      showToast('Failed to raise dispute.', 'error');
     }
   },
 
@@ -1153,10 +1160,10 @@ const APP = {
       await apiClient.resolveDispute(requestId, status, resolutionNote);
       this.state.resolvingRequestId = null;
       this.state.resolutionNote = '';
-      alert('Dispute resolved.');
+      showToast('Dispute resolved.', 'success');
       this.init();
     } catch (err) {
-      alert('Failed to resolve dispute.');
+      showToast('Failed to resolve dispute.', 'error');
     }
   },
 
@@ -1202,7 +1209,7 @@ const APP = {
       }
       this.init();
     } catch (err) {
-      alert('Failed to update item status.');
+      showToast('Failed to update item status.', 'error');
     }
   },
 
@@ -1217,7 +1224,7 @@ const APP = {
       }
       this.init();
     } catch (err) {
-      alert('Failed to update job status.');
+      showToast('Failed to update job status.', 'error');
     }
   },
 
@@ -1227,10 +1234,10 @@ const APP = {
     if (item && confirm(`Are you sure you want to delete ${item.title}?`)) {
       try {
         await apiClient.deleteResource(itemId);
-        alert('Resource listing permanently moderated / removed.');
+        showToast('Resource listing permanently removed.', 'success');
         this.init();
       } catch (err) {
-        alert('Failed to delete resource.');
+        showToast('Failed to delete resource.', 'error');
       }
     }
   },
@@ -1240,10 +1247,10 @@ const APP = {
     if (job && confirm(`Remove job listing: ${job.title}?`)) {
       try {
         await apiClient.deleteJob(jobId);
-        alert('Job opportunity moderated / removed.');
+        showToast('Job opportunity removed.', 'success');
         this.init();
       } catch (err) {
-        alert('Failed to delete job.');
+        showToast('Failed to delete job.', 'error');
       }
     }
   },
@@ -1265,10 +1272,10 @@ const APP = {
       try {
         await apiClient.promoteToAdmin(userId);
         user.role = 'Admin';
-        alert(`${user.name} is now an Admin.`);
+        showToast(`${user.name} is now an Admin.`, 'success');
         this.render();
       } catch (err) {
-        alert('Failed to promote user: ' + err.message);
+        showToast('Failed to promote user.', 'error');
       }
     }
   },
@@ -1280,10 +1287,10 @@ const APP = {
       try {
         await apiClient.demoteToMember(userId);
         user.role = 'Member';
-        alert(`${user.name} is now a Member.`);
+        showToast(`${user.name} is now a Member.`, 'success');
         this.render();
       } catch (err) {
-        alert('Failed to demote user: ' + err.message);
+        showToast('Failed to demote user.', 'error');
       }
     }
   },
@@ -1316,7 +1323,7 @@ const APP = {
       this.state.jobs = this.state.jobs.filter(j => j.postedById !== userId);
 
       this.render();
-      alert(`Removed ${count} items belonging to ${user.name}. Reviews cleaned locally.`);
+      showToast(`Removed ${count} items belonging to ${user.name}.`, 'success');
     }
   },
 
@@ -1330,7 +1337,7 @@ const APP = {
       this.state.userProfileData = data;
       this.render();
     } catch (err) {
-      alert('Failed to load user profile: ' + err.message);
+      showToast('Failed to load user profile.', 'error');
       this.closeModal();
     }
   },
@@ -1348,10 +1355,10 @@ const APP = {
     try {
       const updated = await apiClient.suspendUser(userId);
       user.isActive = updated.is_active;
-      alert(`${user.name} has been ${action === 'suspend' ? 'suspended' : 'reactivated'}.`);
+      showToast(`${user.name} has been ${action === 'suspend' ? 'suspended' : 'reactivated'}.`, 'success');
       this.render();
     } catch (err) {
-      alert('Failed to ' + action + ' user: ' + err.message);
+      showToast(`Failed to ${action} user.`, 'error');
     }
   },
 
@@ -1363,10 +1370,10 @@ const APP = {
     try {
       await apiClient.deleteUser(userId);
       this.state.users = this.state.users.filter(u => u.id !== userId);
-      alert(`${user.name} has been deleted.`);
+      showToast(`${user.name} has been deleted.`, 'success');
       this.render();
     } catch (err) {
-      alert('Failed to delete user: ' + err.message);
+      showToast('Failed to delete user.', 'error');
     }
   },
 
@@ -1376,12 +1383,12 @@ const APP = {
       try {
         await apiClient.deleteReview(reviewId);
         this.state.reviews = this.state.reviews.filter(r => r.id !== reviewId);
-        alert('Review deleted.');
+        showToast('Review deleted.', 'success');
         this.render();
       } catch (err) {
         // Fallback: remove locally
         this.state.reviews = this.state.reviews.filter(r => r.id !== reviewId);
-        alert('Review removed locally.');
+        showToast('Review removed locally.', 'info');
         this.render();
       }
     }
