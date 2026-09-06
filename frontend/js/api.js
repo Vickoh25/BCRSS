@@ -233,6 +233,10 @@ class APIClient {
     const u = await this.request('/auth/me/'); 
     return this.mapUser(u);
   }
+  async updateProfile(data) {
+    const u = await this.request('/auth/me/', { method: 'PATCH', body: data });
+    return this.mapUser(u);
+  }
   async getUser(id) { 
     const u = await this.request(`/users/${id}/`);
     return this.mapUser(u);

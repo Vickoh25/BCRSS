@@ -118,7 +118,8 @@ function renderHeader(state) {
     navItems.push(
       { id: 'resources', label: 'Resources' },
       { id: 'jobs', label: 'Jobs' },
-      { id: 'dashboard', label: 'Dashboard' }
+      { id: 'dashboard', label: 'Dashboard' },
+      { id: 'settings', label: 'Settings' }
     );
     if (currentUser.role === 'Admin') {
       navItems.push({ id: 'admin', label: 'Admin' });
@@ -199,9 +200,12 @@ function renderUserDropdown(state) {
       <button class="dropdown-item" onclick="APP.changeTab('dashboard')">
         ${icon('users', 'w-4 h-4')}<span>My Dashboard</span>
       </button>
+      <button class="dropdown-item" onclick="APP.changeTab('settings')">
+        ${icon('settings', 'w-4 h-4')}<span>Settings</span>
+      </button>
       ${currentUser.role === 'Admin' ? `
       <button class="dropdown-item" onclick="APP.changeTab('admin')">
-        ${icon('settings', 'w-4 h-4')}<span>Admin Panel</span>
+        ${icon('shield', 'w-4 h-4')}<span>Admin Panel</span>
       </button>` : ''}
     </div>
 
@@ -223,7 +227,8 @@ function renderMobileDrawer(state) {
     navItems.push(
       { id: 'resources', label: 'Resources' },
       { id: 'jobs', label: 'Jobs' },
-      { id: 'dashboard', label: 'Dashboard' }
+      { id: 'dashboard', label: 'Dashboard' },
+      { id: 'settings', label: 'Settings' }
     );
     if (currentUser.role === 'Admin') {
       navItems.push({ id: 'admin', label: 'Admin' });
@@ -2098,4 +2103,91 @@ function renderResetPasswordModal(state) {
       </div>
     </form>
   `, 'sm');
+}
+
+// ==================== SETTINGS PAGE ====================
+function renderSettingsPage(state) {
+  const { currentUser, darkMode } = state;
+  if (!currentUser) {
+    return `<div class="page-section"><div class="container"><p>Please log in to access settings.</p></div></div>`;
+  }
+
+  const initials = currentUser.name.split(' ').map(n => n[0]).join('');
+
+  return `<div class="page-section" style="min-height:100vh;padding:var(--space-10) 0">
+    <div class="container" style="max-width:720px">
+      <h1 style="font-family:var(--font-serif);font-size:var(--fs-4xl);font-weight:700;color:var(--color-text);letter-spacing:-0.02em;margin-bottom:var(--space-1)">Settings</h1>
+      <p style="font-size:var(--fs-base);color:var(--color-text-secondary);margin-bottom:var(--space-10)">Manage your account and preferences</p>
+
+      <!-- Appearance Section -->
+      <div style="background:var(--color-surface);border:1px solid var(--color-border-light);border-radius:var(--radius-xl);padding:var(--space-6);margin-bottom:var(--space-6);box-shadow:var(--shadow-card)">
+        <h2 style="font-family:var(--font-serif);font-size:var(--fs-xl);font-weight:700;color:var(--color-text);margin-bottom:var(--space-5)">Appearance</h2>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:var(--space-4)">
+          <div>
+            <div style="font-weight:600;font-size:var(--fs-sm);color:var(--color-text);margin-bottom:2px">Dark Mode</div>
+            <div style="font-size:var(--fs-xs);color:var(--color-text-secondary)">Switch between light and dark theme</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" ${darkMode ? 'checked' : ''} onchange="APP.toggleDarkMode(this.checked)">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Profile Section -->
+      <div style="background:var(--color-surface);border:1px solid var(--color-border-light);border-radius:var(--radius-xl);padding:var(--space-6);box-shadow:var(--shadow-card)">
+        <h2 style="font-family:var(--font-serif);font-size:var(--fs-xl);font-weight:700;color:var(--color-text);margin-bottom:var(--space-5)">Profile</h2>
+        
+        <!-- Avatar -->
+        <div style="display:flex;align-items:center;gap:var(--space-4);margin-bottom:var(--space-6)">
+          <div class="avatar ${currentUser.avatarColor}" style="width:64px;height:64px;font-size:var(--fs-xl)">${initials}</div>
+          <div>
+            <div style="font-weight:600;font-size:var(--fs-base);color:var(--color-text)">${currentUser.name}</div>
+            <div style="font-size:var(--fs-sm);color:var(--color-text-secondary)">${currentUser.email}</div>
+            <div style="margin-top:var(--space-1);display:inline-flex;padding:2px 8px;border-radius:9999px;font-size:10px;font-weight:600;background:var(--color-primary-light);color:var(--color-primary)">${currentUser.role} Account</div>
+          </div>
+        </div>
+
+        <!-- Profile Form -->
+        <form onsubmit="APP.handleUpdateProfile(event)">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4);margin-bottom:var(--space-4)">
+            <div>
+              <label class="form-label">First Name</label>
+              <input type="text" class="input-field" id="settings-first-name" value="${esc(currentUser.name.split(' ')[0] || '')}" placeholder="First name">
+            </div>
+            <div>
+              <label class="form-label">Last Name</label>
+              <input type="text" class="input-field" id="settings-last-name" value="${esc(currentUser.name.split(' ').slice(1).join(' ') || '')}" placeholder="Last name">
+            </div>
+          </div>
+
+          <div style="margin-bottom:var(--space-4)">
+            <label class="form-label">Email</label>
+            <input type="email" class="input-field" id="settings-email" value="${esc(currentUser.email)}" placeholder="Email address">
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4);margin-bottom:var(--space-4)">
+            <div>
+              <label class="form-label">Location</label>
+              <input type="text" class="input-field" id="settings-location" value="${esc(currentUser.location || '')}" placeholder="e.g. Baraton Market Area">
+            </div>
+            <div>
+              <label class="form-label">Contact</label>
+              <input type="text" class="input-field" id="settings-contact" value="${esc(currentUser.contact || '')}" placeholder="e.g. +254 712 345678">
+            </div>
+          </div>
+
+          <div style="margin-bottom:var(--space-5)">
+            <label class="form-label">Bio</label>
+            <textarea class="textarea-field" id="settings-bio" placeholder="Tell the community about yourself..." rows="3">${esc(currentUser.bio || '')}</textarea>
+          </div>
+
+          <div style="display:flex;justify-content:flex-end;gap:var(--space-3)">
+            <button type="button" class="btn btn-secondary" onclick="APP.changeTab('home')">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>`;
 }

@@ -2685,3 +2685,188 @@ body {
     transform: translateX(40px) scale(0.96);
   }
 }
+
+/* ---------- Dark Mode ---------- */
+.dark,
+.dark body {
+  --color-bg: #0f172a;
+  --color-surface: #1e293b;
+  --color-text: #f1f5f9;
+  --color-text-secondary: #94a3b8;
+  --color-text-tertiary: #64748b;
+  --color-border: #334155;
+  --color-border-light: #1e293b;
+  --color-border-subtle: #334155;
+  --color-primary-light: rgba(13, 148, 136, 0.15);
+  --color-primary-lighter: rgba(13, 148, 136, 0.08);
+  --neutral-50: #1e293b;
+  --neutral-100: #334155;
+  --neutral-150: #475569;
+  --neutral-200: #475569;
+  --neutral-300: #64748b;
+  --neutral-400: #94a3b8;
+  --neutral-500: #94a3b8;
+  --neutral-800: #1e293b;
+  --neutral-900: #0f172a;
+}
+
+.dark body {
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.dark .app-header {
+  background: rgba(15, 23, 42, 0.85);
+  border-bottom-color: var(--color-border);
+}
+
+.dark .dropdown-menu {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+.dark .modal-panel {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+.dark .btn-secondary {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+
+.dark .btn-secondary:hover:not(:disabled) {
+  background: var(--neutral-100);
+  border-color: var(--neutral-300);
+}
+
+.dark .btn-outline {
+  border-color: var(--color-border);
+  color: var(--color-text-secondary);
+}
+
+.dark .btn-outline:hover {
+  border-color: var(--neutral-300);
+  color: var(--color-text);
+  background: var(--neutral-100);
+}
+
+.dark .search-input,
+.dark .input-field,
+.dark .textarea-field,
+.dark .select-field {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+.dark .search-input:focus,
+.dark .input-field:focus,
+.dark .textarea-field:focus,
+.dark .select-field:focus {
+  background: var(--color-surface);
+  border-color: var(--color-primary);
+}
+
+.dark .resource-card,
+.dark .job-card,
+.dark .testimonial-card,
+.dark .metric-card,
+.dark .dashboard-card,
+.dark .feature-card,
+.dark .empty-state,
+.dark .filter-bar {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+.dark .data-table th {
+  background: var(--neutral-100);
+  color: var(--color-text-secondary);
+  border-bottom-color: var(--color-border);
+}
+
+.dark .data-table tbody tr {
+  border-bottom-color: var(--color-border-light);
+}
+
+.dark .data-table tbody tr:hover {
+  background: var(--neutral-100);
+}
+
+.dark .toast {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+.dark .tab-btn,
+.dark .sub-tab-btn,
+.dark .admin-tab-btn {
+  color: var(--color-text-secondary);
+}
+
+.dark .tab-btn:hover,
+.dark .sub-tab-btn:hover,
+.dark .admin-tab-btn:hover {
+  color: var(--color-text);
+}
+
+.dark .tab-btn.active {
+  color: var(--color-primary);
+}
+
+.dark .sub-tab-btn.active {
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+}
+
+.dark .app-footer {
+  background: #020617;
+  border-top-color: var(--neutral-800);
+}
+
+/* ---------- Toggle Switch ---------- */
+.toggle-switch {
+  position: relative;
+  width: 48px;
+  height: 26px;
+  flex-shrink: 0;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background: var(--neutral-300);
+  border-radius: 26px;
+  transition: all var(--duration-fast) ease;
+}
+
+.toggle-slider::before {
+  content: '';
+  position: absolute;
+  height: 20px;
+  width: 20px;
+  left: 3px;
+  bottom: 3px;
+  background: white;
+  border-radius: 50%;
+  transition: all var(--duration-fast) var(--ease-spring);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+}
+
+.toggle-switch input:checked + .toggle-slider {
+  background: var(--color-primary);
+}
+
+.toggle-switch input:checked + .toggle-slider::before {
+  transform: translateX(22px);
+}

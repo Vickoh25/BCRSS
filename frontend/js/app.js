@@ -53,6 +53,9 @@ const APP = {
     adminTab: 'resources',
     adminSearch: '',
 
+    // UI - Theme
+    darkMode: false,
+
     // UI - Modals
     userProfileData: null,
 
@@ -82,7 +85,17 @@ const APP = {
 
   // ==================== INITIALISATION ====================
   async init() {
-    // Step 0: Check for password reset URL params
+    // Step 0: Load dark mode preference
+    const savedDarkMode = localStorage.getItem('bcrss_dark_mode');
+    if (savedDarkMode !== null) {
+      this.state.darkMode = savedDarkMode === 'true';
+    } else {
+      // Check system preference
+      this.state.darkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+    this.applyTheme();
+
+    // Step 1: Check for password reset URL params
     const urlParams = new URLSearchParams(window.location.search);
     const uid = urlParams.get('uid');
     const token = urlParams.get('token');
@@ -262,6 +275,8 @@ const APP = {
       html += renderDashboardPage(s);
     } else if (s.currentTab === 'admin') {
       html += renderAdminPage(s);
+    } else if (s.currentTab === 'settings') {
+      html += renderSettingsPage(s);
     }
     html += '</main>';
 
@@ -499,6 +514,45 @@ const APP = {
   toggleMobileMenu() {
     this.state.mobileMenuOpen = !this.state.mobileMenuOpen;
     this.render();
+  },
+
+  // ==================== DARK MODE ====================
+  applyTheme() {
+    if (this.state.darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  },
+
+  toggleDarkMode(enabled) {
+    this.state.darkMode = enabled;
+    localStorage.setItem('bcrss_dark_mode', enabled);
+    this.applyTheme();
+  },
+
+  // ==================== PROFILE UPDATE ====================
+  async handleUpdateProfile(e) {
+    e.preventDefault();
+    if (!this.state.currentUser) return;
+
+    const data = {
+      first_name: document.getElementById('settings-first-name').value.trim(),
+      last_name: document.getElementById('settings-last-name').value.trim(),
+      email: document.getElementById('settings-email').value.trim(),
+      location: document.getElementById('settings-location').value.trim(),
+      contact: document.getElementById('settings-contact').value.trim(),
+      bio: document.getElementById('settings-bio').value.trim(),
+    };
+
+    try {
+      this.state.currentUser = await apiClient.updateProfile(data);
+      this.saveToStorage();
+      this.render();
+      showToast('Profile updated successfully!', 'success');
+    } catch (err) {
+      showToast('Failed to update profile. Please try again.', 'error');
+    }
   },
 
   // ==================== MODALS ====================
