@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 def _send(subject, message, recipient_email, html_message=None):
     """Helper to send an email and log the result."""
     try:
+        logger.info(f"Sending email via {settings.EMAIL_BACKEND} to {recipient_email}: {subject}")
         send_mail(
             subject=subject,
             message=message,
@@ -25,22 +26,25 @@ def _send(subject, message, recipient_email, html_message=None):
             html_message=html_message,
             fail_silently=False,
         )
-        logger.info(f"Email sent to {recipient_email}: {subject}")
+        logger.info(f"Email sent successfully to {recipient_email}: {subject}")
         return True
     except Exception as e:
-        logger.error(f"Failed to send email to {recipient_email}: {e}")
+        logger.error(f"Failed to send email to {recipient_email}: {e}", exc_info=True)
         return False
 
 
 def _send_async(subject, message, recipient_email, html_message=None):
     """Send email in a background thread so SMTP timeouts never block the API."""
-    thread = threading.Thread(
-        target=_send,
-        args=(subject, message, recipient_email),
-        kwargs={'html_message': html_message},
-        daemon=True,
-    )
+    def _target():
+        try:
+            _send(subject, message, recipient_email, html_message)
+        except Exception as e:
+            logger.error(f"Async email thread failed for {recipient_email}: {e}")
+
+    thread = threading.Thread(target=_target, daemon=True)
     thread.start()
+    # Brief wait so the thread at least connects to SMTP before response is sent
+    thread.join(timeout=5)
 
 
 # ──────────────────────────────────────────────
