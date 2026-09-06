@@ -75,6 +75,9 @@ const APP = {
     reviewTarget: null,
     resolvingRequestId: null,
     resolutionNote: '',
+    raisingDisputeRequestId: null,
+    raiseDisputeMessage: '',
+    pendingConfirm: null,  // { type, id } for inline confirmation UI
 
     // UI - Password Reset
     resetPasswordUid: null,
@@ -277,6 +280,8 @@ const APP = {
       html += renderAdminPage(s);
     } else if (s.currentTab === 'settings') {
       html += renderSettingsPage(s);
+    } else if (s.currentTab === 'forgotPassword') {
+      html += renderForgotPasswordPage(s);
     }
     html += '</main>';
 
@@ -612,15 +617,22 @@ const APP = {
   },
 
   // ==================== PASSWORD RESET HANDLER ====================
-  async handleForgotPassword() {
-    const email = prompt('Enter your email address to receive a password reset link:');
+  handleForgotPassword() {
+    this.state.forgotPasswordSent = false;
+    this.changeTab('forgotPassword');
+  },
+
+  async handleForgotPasswordSubmit(e) {
+    e.preventDefault();
+    const email = document.getElementById('forgot-email').value;
     if (!email) return;
     try {
       await apiClient.request('/auth/password_reset/', {
         method: 'POST',
         body: { email }
       });
-      showToast('If an account exists with that email, a reset link has been sent. Check your inbox.', 'success');
+      this.state.forgotPasswordSent = true;
+      this.render();
     } catch (err) {
       showToast('Failed to send reset email. Please try again.', 'error');
     }
@@ -1196,11 +1208,36 @@ const APP = {
     }
   },
 
+  startRaiseDispute(requestId) {
+    this.state.raisingDisputeRequestId = requestId;
+    this.state.raiseDisputeMessage = '';
+    this.render();
+    setTimeout(() => {
+      const ta = document.getElementById(`dispute-note-${requestId}`);
+      if (ta) ta.focus();
+    }, 50);
+  },
+
+  cancelRaiseDispute() {
+    this.state.raisingDisputeRequestId = null;
+    this.state.raiseDisputeMessage = '';
+    this.render();
+  },
+
+  setRaiseDisputeMessage(value) {
+    this.state.raiseDisputeMessage = value;
+  },
+
   async raiseDispute(requestId) {
-    const message = prompt('Please describe the issue:');
-    if (!message) return;
+    const message = this.state.raiseDisputeMessage;
+    if (!message || !message.trim()) {
+      showToast('Please describe the issue.', 'error');
+      return;
+    }
     try {
-      await apiClient.raiseDispute(requestId, message);
+      await apiClient.raiseDispute(requestId, message.trim());
+      this.state.raisingDisputeRequestId = null;
+      this.state.raiseDisputeMessage = '';
       showToast('Dispute raised. A community manager will review it.', 'info');
       this.init();
     } catch (err) {
@@ -1240,6 +1277,22 @@ const APP = {
 
   setResolutionNote(value) {
     this.state.resolutionNote = value;
+  },
+
+  // ==================== INLINE CONFIRMATION ====================
+  requestConfirm(type, id) {
+    this.state.pendingConfirm = { type, id };
+    this.render();
+  },
+
+  cancelConfirm() {
+    this.state.pendingConfirm = null;
+    this.render();
+  },
+
+  isPendingConfirm(type, id) {
+    const pc = this.state.pendingConfirm;
+    return pc && pc.type === type && pc.id === id;
   },
 
   async loadAnalytics() {
@@ -1285,100 +1338,89 @@ const APP = {
   // ==================== ADMIN ACTIONS ====================
   async deleteResource(itemId) {
     const item = this.state.resources.find(r => r.id === itemId);
-    if (item && confirm(`Are you sure you want to delete ${item.title}?`)) {
-      try {
-        await apiClient.deleteResource(itemId);
-        showToast('Resource listing permanently removed.', 'success');
-        this.init();
-      } catch (err) {
-        showToast('Failed to delete resource.', 'error');
-      }
+    if (!item) return;
+    this.state.pendingConfirm = null;
+    try {
+      await apiClient.deleteResource(itemId);
+      showToast('Resource listing permanently removed.', 'success');
+      this.init();
+    } catch (err) {
+      showToast('Failed to delete resource.', 'error');
     }
   },
 
   async deleteJob(jobId) {
     const job = this.state.jobs.find(j => j.id === jobId);
-    if (job && confirm(`Remove job listing: ${job.title}?`)) {
-      try {
-        await apiClient.deleteJob(jobId);
-        showToast('Job opportunity removed.', 'success');
-        this.init();
-      } catch (err) {
-        showToast('Failed to delete job.', 'error');
-      }
+    if (!job) return;
+    this.state.pendingConfirm = null;
+    try {
+      await apiClient.deleteJob(jobId);
+      showToast('Job opportunity removed.', 'success');
+      this.init();
+    } catch (err) {
+      showToast('Failed to delete job.', 'error');
     }
   },
 
   async deleteRequest(requestId) {
-    if (confirm('Delete this request record?')) {
-      // Backend typically doesn't allow deleting requests via ModelViewSet unless enabled
-      // For now, let's keep it local or implement if needed
-      this.state.requests = this.state.requests.filter(r => r.id !== requestId);
-      this.render();
-    }
+    this.state.pendingConfirm = null;
+    this.state.requests = this.state.requests.filter(r => r.id !== requestId);
+    this.render();
   },
 
   // ==================== USER MANAGEMENT ====================
   async promoteUser(userId) {
     userId = Number(userId);
     const user = this.state.users.find(u => u.id === userId);
-    if (user && confirm(`Promote ${user.name} to Admin role?`)) {
-      try {
-        await apiClient.promoteToAdmin(userId);
-        user.role = 'Admin';
-        showToast(`${user.name} is now an Admin.`, 'success');
-        this.render();
-      } catch (err) {
-        showToast('Failed to promote user.', 'error');
-      }
+    if (!user) return;
+    this.state.pendingConfirm = null;
+    try {
+      await apiClient.promoteToAdmin(userId);
+      user.role = 'Admin';
+      showToast(`${user.name} is now an Admin.`, 'success');
+      this.render();
+    } catch (err) {
+      showToast('Failed to promote user.', 'error');
     }
   },
 
   async demoteUser(userId) {
     userId = Number(userId);
     const user = this.state.users.find(u => u.id === userId);
-    if (user && confirm(`Demote ${user.name} to Member role?`)) {
-      try {
-        await apiClient.demoteToMember(userId);
-        user.role = 'Member';
-        showToast(`${user.name} is now a Member.`, 'success');
-        this.render();
-      } catch (err) {
-        showToast('Failed to demote user.', 'error');
-      }
+    if (!user) return;
+    this.state.pendingConfirm = null;
+    try {
+      await apiClient.demoteToMember(userId);
+      user.role = 'Member';
+      showToast(`${user.name} is now a Member.`, 'success');
+      this.render();
+    } catch (err) {
+      showToast('Failed to demote user.', 'error');
     }
   },
 
   async deleteUserContent(userId) {
     userId = Number(userId);
     const user = this.state.users.find(u => u.id === userId);
-    if (!user || confirm(`Remove ALL content by ${user.name}? This will delete their resources, jobs, and reviews.`)) {
-      const userResources = this.state.resources.filter(r => r.ownerId === userId);
-      const userJobs = this.state.jobs.filter(j => j.postedById === userId);
-      const userReviews = this.state.reviews.filter(r => r.reviewerName === user.name);
+    if (!user) return;
+    this.state.pendingConfirm = null;
+    const userResources = this.state.resources.filter(r => r.ownerId === userId);
+    const userJobs = this.state.jobs.filter(j => j.postedById === userId);
 
-      let count = 0;
+    let count = 0;
 
-      // Delete resources
-      for (const res of userResources) {
-        try { await apiClient.deleteResource(res.id); count++; } catch (e) { /* skip */ }
-      }
-
-      // Delete jobs
-      for (const job of userJobs) {
-        try { await apiClient.deleteJob(job.id); count++; } catch (e) { /* skip */ }
-      }
-
-      // Delete reviews (apiClient.deleteReview doesn't exist — remove locally)
-      this.state.reviews = this.state.reviews.filter(r => r.reviewerName !== user.name);
-
-      // Clean up stale data
-      this.state.resources = this.state.resources.filter(r => r.ownerId !== userId);
-      this.state.jobs = this.state.jobs.filter(j => j.postedById !== userId);
-
-      this.render();
-      showToast(`Removed ${count} items belonging to ${user.name}.`, 'success');
+    for (const res of userResources) {
+      try { await apiClient.deleteResource(res.id); count++; } catch (e) { /* skip */ }
     }
+    for (const job of userJobs) {
+      try { await apiClient.deleteJob(job.id); count++; } catch (e) { /* skip */ }
+    }
+    this.state.reviews = this.state.reviews.filter(r => r.reviewerName !== user.name);
+    this.state.resources = this.state.resources.filter(r => r.ownerId !== userId);
+    this.state.jobs = this.state.jobs.filter(j => j.postedById !== userId);
+
+    this.render();
+    showToast(`Removed ${count} items belonging to ${user.name}.`, 'success');
   },
 
   async viewUserProfile(userId) {
@@ -1405,7 +1447,7 @@ const APP = {
     const user = this.state.users.find(u => u.id === userId);
     if (!user) return;
     const action = user.isActive === false ? 'reactivate' : 'suspend';
-    if (!confirm(`${action === 'suspend' ? 'Suspend' : 'Reactivate'} ${user.name}?`)) return;
+    this.state.pendingConfirm = null;
     try {
       const updated = await apiClient.suspendUser(userId);
       user.isActive = updated.is_active;
@@ -1420,7 +1462,7 @@ const APP = {
     userId = Number(userId);
     const user = this.state.users.find(u => u.id === userId);
     if (!user) return;
-    if (!confirm(`Permanently delete ${user.name}? This cannot be undone.`)) return;
+    this.state.pendingConfirm = null;
     try {
       await apiClient.deleteUser(userId);
       this.state.users = this.state.users.filter(u => u.id !== userId);
@@ -1433,18 +1475,16 @@ const APP = {
 
   // ==================== REVIEW MODERATION ====================
   async deleteReview(reviewId) {
-    if (confirm('Delete this review permanently?')) {
-      try {
-        await apiClient.deleteReview(reviewId);
-        this.state.reviews = this.state.reviews.filter(r => r.id !== reviewId);
-        showToast('Review deleted.', 'success');
-        this.render();
-      } catch (err) {
-        // Fallback: remove locally
-        this.state.reviews = this.state.reviews.filter(r => r.id !== reviewId);
-        showToast('Review removed locally.', 'info');
-        this.render();
-      }
+    this.state.pendingConfirm = null;
+    try {
+      await apiClient.deleteReview(reviewId);
+      this.state.reviews = this.state.reviews.filter(r => r.id !== reviewId);
+      showToast('Review deleted.', 'success');
+      this.render();
+    } catch (err) {
+      this.state.reviews = this.state.reviews.filter(r => r.id !== reviewId);
+      showToast('Review removed locally.', 'info');
+      this.render();
     }
   },
 

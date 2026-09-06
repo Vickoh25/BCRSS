@@ -1251,6 +1251,30 @@ function renderDashboardRequests(state) {
             };
             const isOverdue = req.status === 'Approved' && new Date(req.endDate) < new Date();
             const reminderSent = req.reminder_sent;
+            const isRaisingDispute = state.raisingDisputeRequestId === req.id;
+
+            // If this request has an active dispute form, show the expanded row
+            if (isOwner && isRaisingDispute) {
+              return `
+            <tr style="background:var(--color-bg-light, #f9fafb)">
+              <td colspan="5" style="padding:var(--space-4)">
+                <div style="display:flex;flex-direction:column;gap:var(--space-3);max-width:500px">
+                  <div style="display:flex;align-items:center;gap:var(--space-2)">
+                    <span class="badge" style="background:var(--color-error-bg);color:var(--color-error)">Raise Dispute</span>
+                    <span style="font-weight:600;color:var(--color-text);font-size:var(--fs-sm)">${esc(req.itemTitle)}</span>
+                  </div>
+                  <div>
+                    <label for="dispute-note-${req.id}" style="font-size:var(--fs-xs);font-weight:600;color:var(--color-text-secondary);display:block;margin-bottom:4px">Describe the issue</label>
+                    <textarea id="dispute-note-${req.id}" rows="3" placeholder="Explain what went wrong with this request..." oninput="APP.setRaiseDisputeMessage(this.value)" style="width:100%;padding:var(--space-2);border:1px solid var(--color-border-light);border-radius:var(--radius-sm);font-size:var(--fs-sm);font-family:inherit;resize:vertical;box-sizing:border-box">${esc(state.raiseDisputeMessage || '')}</textarea>
+                  </div>
+                  <div style="display:flex;gap:var(--space-2)">
+                    <button class="btn btn-sm" style="background:var(--color-error);color:white" onclick="APP.raiseDispute('${req.id}');event.stopPropagation()">Submit Dispute</button>
+                    <button class="btn btn-sm btn-outline" onclick="APP.cancelRaiseDispute();event.stopPropagation()">Cancel</button>
+                  </div>
+                </div>
+              </td>
+            </tr>`;
+            }
 
             return `<tr>
               <td><span style="font-weight:500;color:var(--color-text);font-size:var(--fs-sm)">${esc(req.itemTitle)}</span></td>
@@ -1273,7 +1297,7 @@ function renderDashboardRequests(state) {
                       <button class="btn btn-sm" style="background:var(--color-primary);color:white" onclick="APP.sendReminder('${req.id}');event.stopPropagation()">Send Reminder</button>
                     ` : ''}
                     <button class="btn btn-sm btn-outline" onclick="APP.markReturned('${req.id}');event.stopPropagation()">Mark Returned</button>
-                    ${!req.is_disputed ? `<button class="btn btn-sm" style="background:var(--color-error-bg);color:var(--color-error);border:none" onclick="APP.raiseDispute('${req.id}');event.stopPropagation()">Dispute</button>` : ''}
+                    ${!req.is_disputed ? `<button class="btn btn-sm" style="background:var(--color-error-bg);color:var(--color-error);border:none" onclick="APP.startRaiseDispute('${req.id}');event.stopPropagation()">Dispute</button>` : ''}
                   ` : `<span style="font-size:var(--fs-sm);color:var(--color-text-tertiary)">—</span>`}
                 </div>
               </td>
@@ -1452,15 +1476,30 @@ function renderAdminResources(state) {
       <table class="data-table">
         <thead><tr><th>Title</th><th>Owner</th><th>Category</th><th>Status</th><th style="text-align:right">Actions</th></tr></thead>
         <tbody>
-          ${filtered.map(r => `<tr>
+          ${filtered.map(r => {
+            if (APP.isPendingConfirm('deleteResource', r.id)) {
+              return `<tr style="background:var(--color-bg-light, #f9fafb)">
+                <td colspan="5" style="padding:var(--space-4)">
+                  <div style="display:flex;align-items:center;gap:var(--space-3)">
+                    <span style="font-weight:600;color:var(--color-text);font-size:var(--fs-sm)">Delete "${esc(r.title)}"?</span>
+                    <div style="display:flex;gap:var(--space-2)">
+                      <button class="btn btn-sm" style="background:var(--color-error);color:white" onclick="APP.deleteResource('${r.id}')">Yes, Delete</button>
+                      <button class="btn btn-sm btn-outline" onclick="APP.cancelConfirm()">Cancel</button>
+                    </div>
+                  </div>
+                </td>
+              </tr>`;
+            }
+            return `<tr>
             <td><span style="font-weight:500;color:var(--color-text);font-size:var(--fs-sm)">${esc(r.title)}</span></td>
             <td style="color:var(--color-text-secondary);font-size:var(--fs-sm)">${esc(r.ownerName)}</td>
             <td><span style="font-size:11px">${esc(r.category)}</span></td>
             <td><span class="badge ${r.status === 'Available' ? 'badge-available' : 'badge-borrowed'}">${esc(r.status)}</span></td>
             <td style="text-align:right">
-              <button class="btn btn-sm" style="background:var(--color-error);color:white" onclick="APP.deleteResource('${r.id}')">Delete</button>
+              <button class="btn btn-sm" style="background:var(--color-error);color:white" onclick="APP.requestConfirm('deleteResource', '${r.id}')">Delete</button>
             </td>
-          </tr>`).join('')}
+          </tr>`;
+          }).join('')}
         </tbody>
       </table>
     </div>
@@ -1483,15 +1522,30 @@ function renderAdminJobs(state) {
       <table class="data-table">
         <thead><tr><th>Title</th><th>Posted By</th><th>Category</th><th>Status</th><th style="text-align:right">Actions</th></tr></thead>
         <tbody>
-          ${filtered.map(j => `<tr>
+          ${filtered.map(j => {
+            if (APP.isPendingConfirm('deleteJob', j.id)) {
+              return `<tr style="background:var(--color-bg-light, #f9fafb)">
+                <td colspan="5" style="padding:var(--space-4)">
+                  <div style="display:flex;align-items:center;gap:var(--space-3)">
+                    <span style="font-weight:600;color:var(--color-text);font-size:var(--fs-sm)">Delete "${esc(j.title)}"?</span>
+                    <div style="display:flex;gap:var(--space-2)">
+                      <button class="btn btn-sm" style="background:var(--color-error);color:white" onclick="APP.deleteJob('${j.id}')">Yes, Delete</button>
+                      <button class="btn btn-sm btn-outline" onclick="APP.cancelConfirm()">Cancel</button>
+                    </div>
+                  </div>
+                </td>
+              </tr>`;
+            }
+            return `<tr>
             <td><span style="font-weight:500;color:var(--color-text);font-size:var(--fs-sm)">${esc(j.title)}</span></td>
             <td style="color:var(--color-text-secondary);font-size:var(--fs-sm)">${esc(j.postedBy)}</td>
             <td><span style="font-size:11px">${esc(j.category)}</span></td>
             <td><span class="badge ${j.status === 'Open' ? 'badge-open' : 'badge-filled'}">${esc(j.status)}</span></td>
             <td style="text-align:right">
-              <button class="btn btn-sm" style="background:var(--color-error);color:white" onclick="APP.deleteJob('${j.id}')">Delete</button>
+              <button class="btn btn-sm" style="background:var(--color-error);color:white" onclick="APP.requestConfirm('deleteJob', '${j.id}')">Delete</button>
             </td>
-          </tr>`).join('')}
+          </tr>`;
+          }).join('')}
         </tbody>
       </table>
     </div>
@@ -1533,6 +1587,17 @@ function renderAdminRequests(state) {
                   </div>
                 </div>
               </td>
+            </tr>` : APP.isPendingConfirm('deleteRequest', req.id) ? `
+            <tr style="background:var(--color-bg-light, #f9fafb)">
+              <td colspan="6" style="padding:var(--space-4)">
+                <div style="display:flex;align-items:center;gap:var(--space-3)">
+                  <span style="font-weight:600;color:var(--color-text);font-size:var(--fs-sm)">Delete request for "${esc(req.itemTitle)}"?</span>
+                  <div style="display:flex;gap:var(--space-2)">
+                    <button class="btn btn-sm" style="background:var(--color-error);color:white" onclick="APP.deleteRequest('${req.id}')">Yes, Delete</button>
+                    <button class="btn btn-sm btn-outline" onclick="APP.cancelConfirm()">Cancel</button>
+                  </div>
+                </div>
+              </td>
             </tr>` : `
           <tr>
             <td><span style="font-weight:500;color:var(--color-text);font-size:var(--fs-sm)">${esc(req.itemTitle)}</span></td>
@@ -1547,7 +1612,7 @@ function renderAdminRequests(state) {
                 ${req.is_disputed ? `
                   <button class="btn btn-sm" style="background:var(--color-primary);color:white" onclick="APP.startResolveDispute('${req.id}')">Resolve</button>
                 ` : ''}
-                <button class="btn btn-sm btn-outline" onclick="APP.deleteRequest('${req.id}')">Delete</button>
+                <button class="btn btn-sm btn-outline" onclick="APP.requestConfirm('deleteRequest', '${req.id}')">Delete</button>
               </div>
             </td>
           </tr>`
@@ -1667,7 +1732,32 @@ function renderAdminUsers(state) {
       <table class="data-table">
         <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Location</th><th style="text-align:right">Actions</th></tr></thead>
         <tbody>
-          ${filtered.map(u => `<tr style="${u.isActive === false ? 'opacity:0.5' : ''}">
+          ${filtered.map(u => {
+            const pc = state.pendingConfirm;
+            if (pc && pc.id === String(u.id)) {
+              let confirmMsg = '';
+              let confirmAction = '';
+              let confirmBtnColor = 'var(--color-error)';
+              if (pc.type === 'promoteUser') { confirmMsg = `Promote ${esc(u.name)} to Admin role?`; confirmAction = `APP.promoteUser('${u.id}')`; confirmBtnColor = 'var(--color-primary)'; }
+              else if (pc.type === 'demoteUser') { confirmMsg = `Demote ${esc(u.name)} to Member?`; confirmAction = `APP.demoteUser('${u.id}')`; }
+              else if (pc.type === 'suspendUser') { confirmMsg = `${u.isActive === false ? 'Reactivate' : 'Suspend'} ${esc(u.name)}?`; confirmAction = `APP.suspendUser('${u.id}')`; confirmBtnColor = 'var(--color-warning)'; }
+              else if (pc.type === 'deleteUser') { confirmMsg = `Permanently delete ${esc(u.name)}? This cannot be undone.`; confirmAction = `APP.deleteUser('${u.id}')`; }
+              else if (pc.type === 'deleteUserContent') { confirmMsg = `Remove ALL content by ${esc(u.name)}?`; confirmAction = `APP.deleteUserContent('${u.id}')`; }
+              if (confirmMsg) {
+                return `<tr style="background:var(--color-bg-light, #f9fafb)">
+                  <td colspan="6" style="padding:var(--space-4)">
+                    <div style="display:flex;align-items:center;gap:var(--space-3)">
+                      <span style="font-weight:600;color:var(--color-text);font-size:var(--fs-sm)">${confirmMsg}</span>
+                      <div style="display:flex;gap:var(--space-2)">
+                        <button class="btn btn-sm" style="background:${confirmBtnColor};color:white" onclick="${confirmAction}">Yes</button>
+                        <button class="btn btn-sm btn-outline" onclick="APP.cancelConfirm()">Cancel</button>
+                      </div>
+                    </div>
+                  </td>
+                </tr>`;
+              }
+            }
+            return `<tr style="${u.isActive === false ? 'opacity:0.5' : ''}">
             <td>
               <div style="display:flex;align-items:center;gap:var(--space-2)">
                 <div class="avatar-sm ${esc(u.avatarColor)}">${esc(u.name.split(' ').map(n => n[0]).join(''))}</div>
@@ -1682,14 +1772,15 @@ function renderAdminUsers(state) {
               <div style="display:flex;justify-content:flex-end;gap:var(--space-2);flex-wrap:wrap">
                 <button class="btn btn-sm btn-outline" onclick="APP.viewUserProfile('${u.id}')">View</button>
                 ${u.role === 'Admin'
-                  ? `<button class="btn btn-sm btn-outline" onclick="APP.demoteUser('${u.id}')">Demote</button>`
-                  : `<button class="btn btn-sm" style="background:var(--color-primary);color:white" onclick="APP.promoteUser('${u.id}')">Promote</button>`
+                  ? `<button class="btn btn-sm btn-outline" onclick="APP.requestConfirm('demoteUser', '${u.id}')">Demote</button>`
+                  : `<button class="btn btn-sm" style="background:var(--color-primary);color:white" onclick="APP.requestConfirm('promoteUser', '${u.id}')">Promote</button>`
                 }
-                <button class="btn btn-sm btn-outline" onclick="APP.suspendUser('${u.id}')" style="color:${u.isActive === false ? 'var(--color-success)' : 'var(--color-warning)'}">${u.isActive === false ? 'Reactivate' : 'Suspend'}</button>
-                <button class="btn btn-sm" style="background:var(--color-error);color:white" onclick="APP.deleteUser('${u.id}')">Delete</button>
+                <button class="btn btn-sm btn-outline" onclick="APP.requestConfirm('suspendUser', '${u.id}')" style="color:${u.isActive === false ? 'var(--color-success)' : 'var(--color-warning)'}">${u.isActive === false ? 'Reactivate' : 'Suspend'}</button>
+                <button class="btn btn-sm" style="background:var(--color-error);color:white" onclick="APP.requestConfirm('deleteUser', '${u.id}')">Delete</button>
               </div>
             </td>
-          </tr>`).join('')}
+          </tr>`;
+          }).join('')}
         </tbody>
       </table>
     </div>
@@ -1704,15 +1795,30 @@ function renderAdminReviews(state) {
       <table class="data-table">
         <thead><tr><th>Reviewer</th><th>For</th><th>Rating</th><th>Comment</th><th style="text-align:right">Actions</th></tr></thead>
         <tbody>
-          ${reviews.length > 0 ? reviews.map(r => `<tr>
+          ${reviews.length > 0 ? reviews.map(r => {
+            if (APP.isPendingConfirm('deleteReview', r.id)) {
+              return `<tr style="background:var(--color-bg-light, #f9fafb)">
+                <td colspan="5" style="padding:var(--space-4)">
+                  <div style="display:flex;align-items:center;gap:var(--space-3)">
+                    <span style="font-weight:600;color:var(--color-text);font-size:var(--fs-sm)">Delete this review permanently?</span>
+                    <div style="display:flex;gap:var(--space-2)">
+                      <button class="btn btn-sm" style="background:var(--color-error);color:white" onclick="APP.deleteReview('${r.id}')">Yes, Delete</button>
+                      <button class="btn btn-sm btn-outline" onclick="APP.cancelConfirm()">Cancel</button>
+                    </div>
+                  </div>
+                </td>
+              </tr>`;
+            }
+            return `<tr>
             <td style="color:var(--color-text-secondary);font-size:var(--fs-sm)">${esc(r.reviewerName)}</td>
             <td style="color:var(--color-text-secondary);font-size:var(--fs-sm)">${esc(r.targetName)}</td>
             <td>${'★'.repeat(r.rating)}${'☆'.repeat(5 - r.rating)}</td>
             <td style="color:var(--color-text-tertiary);font-size:var(--fs-sm);max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.comment)}</td>
             <td style="text-align:right">
-              <button class="btn btn-sm" style="background:var(--color-error);color:white" onclick="APP.deleteReview('${r.id}')">Delete</button>
+              <button class="btn btn-sm" style="background:var(--color-error);color:white" onclick="APP.requestConfirm('deleteReview', '${r.id}')">Delete</button>
             </td>
-          </tr>`).join('') : `<tr><td colspan="5" style="text-align:center;color:var(--color-text-tertiary);padding:var(--space-8)">No reviews found.</td></tr>`}
+          </tr>`;
+          }).join('') : `<tr><td colspan="5" style="text-align:center;color:var(--color-text-tertiary);padding:var(--space-8)">No reviews found.</td></tr>`}
         </tbody>
       </table>
     </div>
@@ -2187,6 +2293,44 @@ function renderSettingsPage(state) {
             <button type="submit" class="btn btn-primary">Save Changes</button>
           </div>
         </form>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ==================== FORGOT PASSWORD PAGE ====================
+function renderForgotPasswordPage(state) {
+  const sent = state.forgotPasswordSent || false;
+
+  if (sent) {
+    return `<div class="page-section" style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:var(--space-10) 0">
+      <div class="container" style="max-width:480px;text-align:center">
+        <div style="width:64px;height:64px;border-radius:50%;background:var(--color-success-bg, #ecfdf5);display:flex;align-items:center;justify-content:center;margin:0 auto var(--space-6)">
+          ${icon('checkCircle', 'w-8 h-8 text-success')}
+        </div>
+        <h1 style="font-family:var(--font-serif);font-size:var(--fs-4xl);font-weight:700;color:var(--color-text);letter-spacing:-0.02em;margin-bottom:var(--space-3)">Check Your Email</h1>
+        <p style="font-size:var(--fs-base);color:var(--color-text-secondary);line-height:1.6;margin-bottom:var(--space-8)">If an account exists with that email, a password reset link has been sent. Please check your inbox and follow the instructions.</p>
+        <button class="btn btn-primary btn-lg" onclick="APP.changeTab('home')" style="min-width:200px;justify-content:center">Back to Home</button>
+      </div>
+    </div>`;
+  }
+
+  return `<div class="page-section" style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:var(--space-10) 0">
+    <div class="container" style="max-width:480px">
+      <div style="background:var(--color-surface);border:1px solid var(--color-border-light);border-radius:var(--radius-xl);padding:var(--space-8);box-shadow:var(--shadow-card)">
+        <div style="text-align:center;margin-bottom:var(--space-6)">
+          <div style="width:56px;height:56px;border-radius:50%;background:var(--color-primary-light);display:flex;align-items:center;justify-content:center;margin:0 auto var(--space-4)">${icon('shield', 'w-6 h-6 text-primary')}</div>
+          <h1 style="font-family:var(--font-serif);font-size:var(--fs-3xl);font-weight:700;color:var(--color-text);margin-bottom:var(--space-2)">Forgot Password?</h1>
+          <p style="font-size:var(--fs-sm);color:var(--color-text-secondary);line-height:1.5">Enter your email address and we'll send you a link to reset your password.</p>
+        </div>
+        <form onsubmit="APP.handleForgotPasswordSubmit(event)">
+          <div style="margin-bottom:var(--space-5)">
+            <label class="form-label">Email Address</label>
+            <input type="email" class="input-field" id="forgot-email" placeholder="Enter your email address" required>
+          </div>
+          <button type="submit" class="btn btn-primary btn-lg" style="width:100%;justify-content:center;margin-bottom:var(--space-4)">Send Reset Link</button>
+        </form>
+        <p style="text-align:center;font-size:var(--fs-sm);color:var(--color-text-tertiary)">Remember your password? <a href="#" onclick="event.preventDefault();APP.openModal('login')" style="color:var(--color-primary);font-weight:600">Log in</a></p>
       </div>
     </div>
   </div>`;
