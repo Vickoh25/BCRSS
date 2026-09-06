@@ -619,6 +619,7 @@ const APP = {
   // ==================== PASSWORD RESET HANDLER ====================
   handleForgotPassword() {
     this.state.forgotPasswordSent = false;
+    this.state.activeModal = null;
     this.changeTab('forgotPassword');
   },
 
